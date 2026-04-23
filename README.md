@@ -184,7 +184,7 @@ This is not a polished product. It is a foundation. Build on it.
 
 ## License
 
-WTFPL v2. This is public domain. Do whatever you want with it.
+WTFPL v2 (Do What The Fuck You Want To Public License). Do whatever you want with it. See [THIRD_PARTY_LICENSES.md](docs/THIRD_PARTY_LICENSES.md) for dependency licenses.
 
 ## Links
 
