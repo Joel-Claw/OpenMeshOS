@@ -131,10 +131,15 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Test tile download script
+      - name: Install tile script dependencies
+        run: pip install requests
+
+      - name: Test tile download script loads
         run: |
           python3 -c "import importlib.util; spec = importlib.util.spec_from_file_location('download_tiles', 'scripts/download_tiles.py'); mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod); print('Module loads OK')"
-          python3 scripts/download_tiles.py --help
+
+      - name: Test tile download script --help
+        run: python3 scripts/download_tiles.py --help
 
   map-engine-tests:
     runs-on: ubuntu-latest
