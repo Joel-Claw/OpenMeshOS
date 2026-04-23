@@ -1,5 +1,5 @@
 // OpenMeshOS — MapEngine unit tests (host-side, no Arduino)
-// Copyright 2026 Joel Claw & contributors — CC0 1.0 Universal
+// Copyright 2026 Joel Claw & contributors — WTFPL v2
 //
 // Pure math tests for coordinate conversion. Runs on host (x86).
 // Coordinate math is duplicated from MapEngine.cpp since we can't

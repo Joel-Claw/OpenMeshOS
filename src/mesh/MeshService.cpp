@@ -1,5 +1,5 @@
 // OpenMeshOS — MeshService: bridges MeshCore library to our app
-// Copyright 2026 Joel Claw & contributors — CC0 1.0 Universal
+// Copyright 2026 Joel Claw & contributors — WTFPL v2
 //
 // MeshService wraps the MeshCore C++ library into a friendly API.
 // It owns the radio, identity, and message dispatch loop.

@@ -1,5 +1,5 @@
 // OpenMeshOS — hardware abstraction for LilyGo T-Deck
-// Copyright 2026 Joel Claw & contributors — CC0 1.0 Universal
+// Copyright 2026 Joel Claw & contributors — WTFPL v2
 //
 // Board.cpp ties together the ESP32-S3 peripherals unique to the
 // T-Deck family: ST7789 display, BBQ10KB keyboard, trackball, SX1262

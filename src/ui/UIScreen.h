@@ -1,5 +1,5 @@
 // OpenMeshOS — UIScreen.h
-// Copyright 2026 Joel Claw & contributors — CC0 1.0 Universal
+// Copyright 2026 Joel Claw & contributors — WTFPL v2
 //
 // Top-level UI controller. Owns the LVGL display driver and
 // manages which screen is active.  All screens are defined in

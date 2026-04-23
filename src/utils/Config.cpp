@@ -1,5 +1,5 @@
 // OpenMeshOS — Config: persistent settings on SPIFFS
-// Copyright 2026 Joel Claw & contributors — CC0 1.0 Universal
+// Copyright 2026 Joel Claw & contributors — WTFPL v2
 //
 // Uses ArduinoJson to serialise/deserialise a flat JSON config file.
 // All config lives in /oms.cfg on SPIFFS.

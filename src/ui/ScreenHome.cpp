@@ -1,5 +1,5 @@
 // OpenMeshOS — ScreenHome.cpp
-// Copyright 2026 Joel Claw & contributors — CC0 1.0 Universal
+// Copyright 2026 Joel Claw & contributors — WTFPL v2
 //
 // The main chat screen.  Layout:
 //

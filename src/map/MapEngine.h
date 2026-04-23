@@ -1,5 +1,5 @@
 // OpenMeshOS — MapEngine.h
-// Copyright 2026 Joel Claw & contributors — CC0 1.0 Universal
+// Copyright 2026 Joel Claw & contributors — WTFPL v2
 //
 // Offline tile-based map renderer for ESP32.
 // Tiles stored on SD card in /map/ directory structure:

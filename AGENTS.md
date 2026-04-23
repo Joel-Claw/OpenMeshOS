@@ -62,10 +62,10 @@ g++ -std=c++14 -Wall -Wextra -o test_map_engine test/test_map_engine.cpp -lm
 
 5. **`oms::` namespace** — all OpenMeshOS code goes in the `oms` namespace. Never in the global namespace.
 
-6. **CC0 1.0 license header** on every source file:
+6. **WTFPL 1.0 license header** on every source file:
    ```cpp
    // OpenMeshOS — FileName.h
-   // Copyright 2026 Joel Claw & contributors — CC0 1.0 Universal
+   // Copyright 2026 Joel Claw & contributors — WTFPL v2
    ```
 
 7. **Version comes from `src/version.h`** — never hardcode version strings elsewhere. Use `OMS_VERSION_STRING` macro.

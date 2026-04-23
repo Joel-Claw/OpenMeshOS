@@ -122,7 +122,7 @@ OpenMeshOS/
 │   └── HARDWARE.md           # T-Deck pin reference
 ├── platformio.ini
 ├── partitions.csv
-└── LICENSE                   # CC0 1.0 Universal
+└── LICENSE                   # WTFPL v2
 ```
 
 ## Architecture
@@ -184,7 +184,7 @@ This is not a polished product. It is a foundation. Build on it.
 
 ## License
 
-CC0 1.0 Universal. This is public domain. Do whatever you want with it.
+WTFPL v2. This is public domain. Do whatever you want with it.
 
 ## Links
 

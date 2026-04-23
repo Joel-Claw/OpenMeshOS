@@ -1,5 +1,5 @@
 // OpenMeshOS -- ConfigExport.cpp
-// Copyright 2026 Joel Claw & contributors -- CC0 1.0 Universal
+// Copyright 2026 Joel Claw & contributors -- WTFPL v2
 //
 // Export/import config + identity to/from SD card.
 // MeshCore-compatible format on SD card:

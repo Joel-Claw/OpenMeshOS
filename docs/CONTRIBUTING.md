@@ -79,7 +79,7 @@ We follow MeshCore's embedded C++ conventions:
    }
    ```
 6. **No retroactive reformatting.** Don't create noise diffs.
-7. **Every new file gets the CC0 header.**
+7. **Every new file gets the WTFPL header.**
 
 ## Project Structure
 
@@ -146,5 +146,5 @@ project explicitly welcomes people who are learning embedded development.
 
 ## License
 
-By contributing, you agree your code is released under **CC0 1.0 Universal**
+By contributing, you agree your code is released under **WTFPL v2**
 (public domain dedication). No copyright claims.

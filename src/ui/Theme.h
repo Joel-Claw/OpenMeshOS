@@ -1,5 +1,5 @@
 // OpenMeshOS — Theme.h
-// Copyright 2026 Joel Claw & contributors — CC0 1.0 Universal
+// Copyright 2026 Joel Claw & contributors — WTFPL v2
 //
 // Dark theme inspired by MeshOS aesthetics but cleaner.
 // All colour constants live here so the UI stays consistent.

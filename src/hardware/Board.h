@@ -1,5 +1,5 @@
 // OpenMeshOS — Board.h
-// Copyright 2026 Joel Claw & contributors — CC0 1.0 Universal
+// Copyright 2026 Joel Claw & contributors — WTFPL v2
 //
 // Hardware abstraction for the T-Deck family.
 // One Board singleton owns: display, keyboard, trackball, LoRa, GPS.
