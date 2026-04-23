@@ -4,6 +4,7 @@
 // Initialises hardware, MeshCore, and the UI task loop.
 
 #include <Arduino.h>
+#include "version.h"
 #include "hardware/Board.h"
 #include "mesh/MeshService.h"
 #include "ui/UIScreen.h"
@@ -15,7 +16,7 @@ void setup() {
     Serial.begin(115200);
     while (!Serial && millis() < 3000) { /* wait up to 3s for serial */ }
 
-    OMS_LOG("main", "OpenMeshOS v" OMS_VERSION " starting");
+    OMS_LOG("main", "OpenMeshOS v" OMS_VERSION_STRING " starting");
 
     // 1) Load persistent config from SPIFFS / SD
     oms::config::init();

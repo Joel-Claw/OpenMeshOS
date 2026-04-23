@@ -49,19 +49,19 @@ pio run -e t-deck
 
 Hold the trackball center button, press the reset button on the side, then release both. The T-Deck is now in DFU mode.
 
+**First time / recovery (merged binary):**
 ```bash
 pio run -e t-deck -t upload
+# Or manually with the merged binary:
+esptool.py --chip esp32s3 --port /dev/ttyUSB0 write_flash 0x0 openmeshos-merged.bin
 ```
 
-Or flash manually:
-
+**OTA update (app only):**
 ```bash
-esptool.py --chip esp32s3 --baud 921600 \
-  --before default_reset --after hard_reset write_flash \
-  0x0000 bootloader.bin \
-  0x8000 partitions.bin \
-  0x10000 firmware.bin
+esptool.py --chip esp32s3 --port /dev/ttyUSB0 write_flash 0x10000 openmeshos-0.1.0-alpha.1.bin
 ```
+
+See [docs/VERSIONING.md](docs/VERSIONING.md) for firmware variant details.
 
 ### Map Tiles
 
@@ -141,6 +141,23 @@ OpenMeshOS is layered:
 - **UI** renders everything through LVGL with a consistent dark theme
 
 No dynamic memory allocation after setup. No heap fragmentation. This is embedded software.
+
+## Versioning
+
+OpenMeshOS follows [Semantic Versioning](https://semver.org/) with pre-release tags:
+
+- **`-alpha.N`** — compiles, not tested on hardware. Anything may break.
+- **`-beta.N`** — running on hardware. Core features work but bugs expected.
+- **`-rc.N`** — release candidate. Final testing.
+- **(none)** — stable release.
+
+Current version: **0.1.0-alpha.1** (first compile, not flashed)
+
+Each release includes two firmware binaries:
+1. **App-only** (`openmeshos-X.Y.Z.bin`) — for OTA updates, flash at `0x10000`
+2. **Merged** (`openmeshos-X.Y.Z-merged.bin`) — bootloader + partitions + app, flash at `0x0`
+
+See [docs/VERSIONING.md](docs/VERSIONING.md) for full details.
 
 ## Vibecoding Disclosure
 

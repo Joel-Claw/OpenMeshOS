@@ -20,6 +20,10 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
       - name: Cache PlatformIO
         uses: actions/cache@v4
         with:
@@ -41,17 +45,39 @@ jobs:
       - name: Build firmware
         run: pio run -e ${{ matrix.environment }}
 
-      - name: Upload firmware artifact
+      - name: Build merged binary
+        run: |
+          BUILD=".pio/build/${{ matrix.environment }}"
+          pip install esptool
+          esptool.py --chip esp32s3 merge_bin \
+            -o "$BUILD/openmeshos-${{ steps.version.outputs.VERSION }}-merged.bin" \
+            --flash_mode dio \
+            --flash_size 16MB \
+            0x0 "$BUILD/bootloader.bin" \
+            0x8000 "$BUILD/partitions.bin" \
+            0x10000 "$BUILD/firmware.bin"
+
+      - name: Rename app binary
+        run: |
+          BUILD=".pio/build/${{ matrix.environment }}"
+          cp "$BUILD/firmware.bin" "$BUILD/openmeshos-${{ steps.version.outputs.VERSION }}.bin"
+
+      - name: Upload firmware artifacts
         uses: actions/upload-artifact@v4
         with:
           name: firmware-${{ matrix.environment }}
-          path: .pio/build/${{ matrix.environment }}/firmware.bin
+          path: |
+            .pio/build/${{ matrix.environment }}/openmeshos-*.bin
 
   create-release:
     needs: build-firmware
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
       - name: Download firmware
         uses: actions/download-artifact@v4
@@ -61,14 +87,35 @@ jobs:
 
       - name: Generate checksums
         run: |
-          sha256sum firmware-*.bin > checksums-sha256.txt
+          sha256sum openmeshos-*.bin > checksums-sha256.txt
           cat checksums-sha256.txt
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            firmware-*.bin
+            openmeshos-*.bin
             checksums-sha256.txt
           draft: true
           generate_release_notes: true
+          body: |
+            ## OpenMeshOS v${{ steps.version.outputs.VERSION }}
+
+            ### Firmware files
+
+            | File | Purpose |
+            |------|---------|
+            | `openmeshos-${{ steps.version.outputs.VERSION }}.bin` | Application firmware only. Flash at `0x10000`. For OTA updates. |
+            | `openmeshos-${{ steps.version.outputs.VERSION }}-merged.bin` | Merged binary (bootloader + partitions + app). Flash at `0x0`. For first-time flash or full recovery. |
+
+            ### Flash instructions
+
+            **First time / recovery:**
+            ```
+            esptool.py --chip esp32s3 --port /dev/ttyUSB0 write_flash 0x0 openmeshos-${{ steps.version.outputs.VERSION }}-merged.bin
+            ```
+
+            **OTA update:**
+            ```
+            esptool.py --chip esp32s3 --port /dev/ttyUSB0 write_flash 0x10000 openmeshos-${{ steps.version.outputs.VERSION }}.bin
+            ```

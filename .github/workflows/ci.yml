@@ -44,11 +44,11 @@ jobs:
 
       - name: Check firmware size
         run: |
-          FIRMWARE=".pio/build/${{ matrix.environment }}/firmware.bin"
+          BUILD=".pio/build/${{ matrix.environment }}"
+          FIRMWARE="$BUILD/firmware.bin"
           if [ -f "$FIRMWARE" ]; then
             SIZE=$(wc -c < "$FIRMWARE")
             echo "Firmware size: $SIZE bytes"
-            # 16MB flash = 16777216 bytes, warn if over 80%
             LIMIT=$((16777216 * 80 / 100))
             if [ "$SIZE" -gt "$LIMIT" ]; then
               echo "::warning::Firmware size ($SIZE bytes) exceeds 80% of flash"
@@ -58,6 +58,27 @@ jobs:
             exit 1
           fi
 
+      - name: Build merged binary
+        run: |
+          BUILD=".pio/build/${{ matrix.environment }}"
+          pip install esptool
+          esptool.py --chip esp32s3 merge_bin \
+            -o "$BUILD/openmeshos-merged.bin" \
+            --flash_mode dio \
+            --flash_size 16MB \
+            0x0 "$BUILD/bootloader.bin" \
+            0x8000 "$BUILD/partitions.bin" \
+            0x10000 "$BUILD/firmware.bin"
+          echo "Merged binary size: $(wc -c < "$BUILD/openmeshos-merged.bin") bytes"
+
+      - name: Upload firmware artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-${{ matrix.environment }}
+          path: |
+            .pio/build/${{ matrix.environment }}/firmware.bin
+            .pio/build/${{ matrix.environment }}/openmeshos-merged.bin
+
   lint:
     runs-on: ubuntu-latest
     steps:
@@ -65,7 +86,6 @@ jobs:
 
       - name: Check for TODOs in code
         run: |
-          # Warn about TODO/FIXME/HACK but don't fail
           grep -rn "TODO\|FIXME\|HACK\|XXX" src/ || true
 
       - name: Check license headers
@@ -92,6 +112,14 @@ jobs:
               echo "::warning::$screen not documented in UI_DESIGN.md"
             fi
           done
+
+      - name: Check version.h matches
+        run: |
+          if [ ! -f "src/version.h" ]; then
+            echo "::error::Missing src/version.h"
+            exit 1
+          fi
+          echo "Version: $(grep OMS_VERSION_STRING src/version.h)"
 
   python-tests:
     runs-on: ubuntu-latest
@@ -121,4 +149,3 @@ jobs:
       - name: Verify all tests pass
         run: |
           ./test_map_engine
-          echo "MapEngine tests: $?"
