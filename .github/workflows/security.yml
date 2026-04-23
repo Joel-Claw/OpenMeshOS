@@ -1,0 +1,92 @@
+name: Security Audit
+
+on:
+  issues:
+    types: [opened, edited]
+  pull_request:
+    types: [opened, synchronize, edited]
+
+jobs:
+  check-issue:
+    if: github.event_name == 'issues'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for suspicious patterns
+        run: |
+          TITLE="${{ github.event.issue.title }}"
+          BODY="${{ github.event.issue.body }}"
+          SUSPICIOUS=0
+
+          # Check for hidden links
+          if echo "$BODY" | grep -qiE 'http[s]?://[^[:space:]]*\.(exe|msi|bat|cmd|ps1|sh|bin)'; then
+            echo "::warning::Issue body contains suspicious executable links"
+            SUSPICIOUS=1
+          fi
+
+          # Check for base64-encoded content (possible payload)
+          if echo "$BODY" | grep -qiE '[A-Za-z0-9+/]{100,}={0,2}'; then
+            echo "::warning::Issue body contains possible base64-encoded content"
+            SUSPICIOUS=1
+          fi
+
+          # Check for social engineering patterns
+          if echo "$BODY" | grep -qiE '(urgent|critical security|immediate action|your account will|verify your)'; then
+            echo "::warning::Issue body contains social engineering patterns"
+            SUSPICIOUS=1
+          fi
+
+          if [ "$SUSPICIOUS" -eq 1 ]; then
+            echo "⚠️ Suspicious issue detected — manual review recommended"
+          else
+            echo "✅ Issue looks clean"
+          fi
+
+  check-pr:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Check for suspicious file changes
+        run: |
+          git fetch origin main
+          CHANGED=$(git diff --name-only origin/main...HEAD)
+          SUSPICIOUS=0
+
+          echo "Changed files:"
+          echo "$CHANGED"
+
+          # Check for binary files added
+          BINARY=$(echo "$CHANGED" | grep -iE '\.(exe|msi|bat|cmd|ps1|dll|so|dylib)$' || true)
+          if [ -n "$BINARY" ]; then
+            echo "::warning::PR adds binary files: $BINARY"
+            SUSPICIOUS=1
+          fi
+
+          # Check for workflow modifications
+          WORKFLOWS=$(echo "$CHANGED" | grep -E '^\.github/' || true)
+          if [ -n "$WORKFLOWS" ]; then
+            echo "::warning::PR modifies GitHub workflows: $WORKFLOWS"
+            SUSPICIOUS=1
+          fi
+
+          # Check for secret-like strings in diff
+          if git diff origin/main...HEAD | grep -qiE '(api_key|secret|password|token|credential)\s*[:=]'; then
+            echo "::warning::PR diff contains possible secrets/credentials"
+            SUSPICIOUS=1
+          fi
+
+          # Check for new dependencies added
+          NEW_DEPS=$(git diff origin/main...HEAD -- platformio.ini | grep '^\+' | grep -v '^\+\+\+' || true)
+          if [ -n "$NEW_DEPS" ]; then
+            echo "::warning::PR adds new dependencies — verify they're from trusted sources"
+            echo "$NEW_DEPS"
+          fi
+
+          if [ "$SUSPICIOUS" -eq 1 ]; then
+            echo "⚠️ Suspicious PR patterns detected — manual review required"
+          else
+            echo "✅ PR looks clean"
+          fi
