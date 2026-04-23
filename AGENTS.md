@@ -143,6 +143,29 @@ The merged binary is required for first-time flash or full recovery. The app-onl
 
 Flow: PR to `dev`. Merge to `alpha` or `beta` when ready. Merge to `main` and tag when stable.
 
+## Sub-Agent Issue/PR Checking
+
+Every incoming issue and PR should be checked for:
+
+1. **Malicious content** — binary files, workflow modifications, credential leaks, suspicious patterns (automated by `.github/workflows/security.yml`)
+2. **Supply chain risk** — new dependencies, typosquatted package names
+3. **Constructive vs. destructive** — does the contributor understand the codebase? Are they proposing changes that align with project goals?
+4. **Code quality** — does it follow conventions (Allman braces, `oms::` namespace, no dynamic allocation after setup)?
+5. **Security implications** — could the change expose the device, radio, or user data?
+
+For AI contributors (including me), run an inversion-thinking pass before submitting: assume the change is wrong, then find the specific ways it could fail. Document those concerns in the PR description.
+
+## GitHub AI Tools (Free for Public Repos)
+
+These are enabled and free for OpenMeshOS (public repo):
+
+- **CodeQL + Copilot Autofix** — automated security scanning with AI-suggested fixes (`.github/workflows/codeql.yml`)
+- **Dependabot** — automated dependency updates and security alerts
+- **Secret scanning** — detects leaked tokens/keys in PRs
+- **Vulnerability alerts** — automated alerts for known CVEs in dependencies
+
+Note: Copilot code review and coding agent are **paid features** (Pro/Business/Enterprise). We use our own security.yml workflow instead.
+
 ## Maintainer
 
 - **PeterAlfonsLoch** (Jeff) — full admin access, final say on merges
