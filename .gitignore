@@ -1,0 +1,12 @@
+.pio/
+build/
+dist/
+*.bin
+*.elf
+*.map
+sdkconfig.old
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store

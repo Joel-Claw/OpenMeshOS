@@ -1,0 +1,7 @@
+# Name,   Type, SubType, Offset,  Size, Flags
+# Note: if you have increased the bootloader size, make sure to update the offsets
+nvs,      data, nvs,     0x9000,  0x4000,
+otadata,  data, ota,     0xd000,  0x2000,
+ota_0,    app,  ota_0,  0x10000,  0x640000,
+ota_1,    app,  ota_1,  0x650000, 0x640000,
+sdcard,   data, fat,   0xc90000, 0x370000,
