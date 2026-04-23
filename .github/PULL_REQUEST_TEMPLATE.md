@@ -4,7 +4,7 @@ First: thank you. This project needs hardware testers more than anything.
 
 ## Quick Facts
 
-- **License:** CC0 1.0 Universal (public domain dedication)
+- **License:** WTFPL v2 (Do What The Fuck You Want To Public License)
 - **Code origin:** Vibecoded by GLM-5.1, iterated by humans
 - **Hardware:** LilyGo T-Deck / T-Deck Plus (ESP32-S3)
 - **Framework:** PlatformIO + Arduino
@@ -25,7 +25,7 @@ First: thank you. This project needs hardware testers more than anything.
 2. **Run host tests:** `g++ -std=c++14 -o test_map test/test_map_engine.cpp -lm && ./test_map`
 3. **No new dependencies** without discussion — supply chain risk
 4. **No workflow changes** without maintainer approval
-5. **CC0 header** on all new source files
+5. **WTFPL v2 header** on all new source files
 
 ## What We Need Most
 

@@ -147,4 +147,4 @@ project explicitly welcomes people who are learning embedded development.
 ## License
 
 By contributing, you agree your code is released under **WTFPL v2**
-(public domain dedication). No copyright claims.
+(WTFPL v2). Do what the fuck you want to.

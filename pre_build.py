@@ -1,6 +1,6 @@
 # OpenMeshOS - pre-build script for PlatformIO
 # Removes Helium ARM assembly from LVGL (not compatible with ESP32-S3/Xtensa)
-# Copyright 2026 Joel Claw & contributors - CC0 1.0 Universal
+# Copyright 2026 Joel Claw & contributors - WTFPL v2
 
 import os
 import glob
