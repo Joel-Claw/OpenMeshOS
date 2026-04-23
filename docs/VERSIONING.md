@@ -60,3 +60,14 @@ esptool.py --chip esp32s3 --port /dev/ttyUSB0 write_flash 0x10000 openmeshos-0.1
 4. Push tag: `git push origin vX.Y.Z[-tag.N]`
 5. CI builds both firmware variants and creates a draft GitHub Release
 6. Maintainer reviews and publishes the release
+
+## Branching Model
+
+| Branch | Purpose |
+|--------|----------|
+| `main` | Stable releases. Tagged with versions. Never push directly. Default branch on GitHub. |
+| `dev` | Active development. All PRs target this branch. CI must pass. Branch protection enabled. |
+| `alpha` | Created from `dev` when enough features accumulate for an alpha release. |
+| `beta` | Created from `alpha` when features are hardware-tested and mostly working. |
+
+Flow: PR to `dev`. Merge to `alpha` or `beta` when ready. Merge to `main` and tag when stable. Releases only at proper milestones, not after a single PR or change.

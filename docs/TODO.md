@@ -2,10 +2,10 @@
 
 ## Immediate (before first flash)
 
-- [ ] Verify all GPIO pin assignments against [T-Deck schematic](https://github.com/Xinyuan-LilyGO/T-Deck)
-- [ ] Create TFT_eSPI `User_Setup.h` for T-Deck ST7789 config
-- [ ] Test first compile: `pio run -e t-deck`
-- [ ] Fix all compile errors
+- [x] Verify all GPIO pin assignments against [T-Deck schematic](https://github.com/Xinyuan-LilyGO/T-Deck) — done from docs, needs hardware validation
+- [x] Create TFT_eSPI `User_Setup.h` for T-Deck ST7789 config
+- [x] Test first compile: `pio run -e t-deck` — compiles clean (586KB)
+- [x] Fix all compile errors — all resolved
 - [ ] Flash to T-Deck, verify serial output appears
 - [ ] Confirm display shows something (even just a black screen with backlight)
 
@@ -58,8 +58,8 @@
 
 ## Testing
 
-- [ ] Unit test: MapEngine coordinate conversion (lat/lng ↔ tile)
-- [ ] Unit test: Config save/load round-trip
+- [x] Unit test: MapEngine coordinate conversion (lat/lng to/from tile) — 34 tests passing
+- [x] Unit test: Config save/load round-trip
 - [ ] Integration test: SPIFFS read/write under load
 - [ ] Hardware test: keyboard scan produces expected keycodes
 - [ ] Hardware test: GPS NMEA sentences decode correctly
@@ -72,5 +72,6 @@
 - [ ] Trackball debounce and acceleration
 - [ ] Sound feedback (buzzer) on message receive
 - [ ] Battery icon in status bar with live voltage
-- [ ] OTA firmware update via SD card
-- [ ] Release binary + checksums on GitHub
+- [x] OTA firmware update via SD card
+- [x] Release binary + checksums on GitHub
+- [x] Config export/import via SD card (ConfigExport.h/cpp)

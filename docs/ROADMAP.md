@@ -1,6 +1,6 @@
 # Roadmap — OpenMeshOS
 
-Current firmware version: **0.1.0** (initial vibecoded foundation)
+Current firmware version: **0.1.0-alpha.1** (first compile, not flashed to hardware)
 
 ## Phase 0: Foundation Cleanup (v0.1.0 — Current)
 
@@ -12,10 +12,16 @@ Current firmware version: **0.1.0** (initial vibecoded foundation)
 - [x] Home screen layout (chat bubbles, tabs, input)
 - [x] MapEngine coordinate math
 - [x] MeshCore as git submodule
+- [x] First successful compile without errors
+- [x] CI pipeline (build, test, security audit, release workflow)
+- [x] CodeQL security scanning (weekly, Copilot Autofix enabled)
+- [x] MapEngine unit tests (34 tests passing)
+- [x] Config export/import via SD card (MeshCore-compatible format)
+- [x] Branching model (main/dev/alpha/beta)
+- [x] Release v0.1.0-alpha.1 (draft firmware on GitHub)
 - [ ] **Human review needed**: Validate pin assignments against T-Deck schematic
 - [ ] **Human review needed**: Test TFT_eSPI User_Setup.h configuration
 - [ ] **Human review needed**: Verify LVGL 9 integration with TFT_eSPI on ESP32-S3
-- [ ] First successful compile without errors
 - [ ] First flash to T-Deck hardware
 
 ## Phase 1: Core Chat (v0.2.0)
@@ -40,8 +46,8 @@ Goal: Send and receive messages on the mesh.
   - Special keys (Enter = send, Esc = back)
 - [ ] Channel switching (trackball left/right on status bar)
 - [ ] BLE companion app connectivity
-- [ ] Config import/export (MeshCore companion app format)
-- [ ] Unit tests for coordinate math (MapEngine)
+- [x] Config import/export (MeshCore companion app format)
+- [x] Unit tests for coordinate math (MapEngine)
 
 ## Phase 2: Map (v0.3.0)
 
@@ -58,8 +64,8 @@ Goal: Offline GPS map with node positions.
 - [ ] Node tap/select → info popup
 - [ ] Tile caching in PSRAM (LRU, 8 tiles)
 - [ ] Progressive tile loading (center first, edges after)
-- [ ] Tile download helper script (`scripts/download_tiles.py`)
-- [ ] Map screen accessible from home screen navigation
+- [x] Tile download helper script (`scripts/download_tiles.py`)
+- [x] Map screen accessible from home screen navigation
 
 ## Phase 3: Settings & Polish (v0.4.0)
 
@@ -121,8 +127,8 @@ Goal: Production-ready firmware.
 - [ ] Crash logging (save stack trace to SPIFFS, show on next boot)
 - [ ] Security audit (MeshCore encryption, no plaintext key storage)
 - [ ] User documentation (flashing guide, settings reference, FAQ)
-- [ ] Release binaries on GitHub with SHA-256 checksums
-- [ ] Web flasher page (like MeshCore's)
+- [x] Release binaries on GitHub with SHA-256 checksums
+- [x] Web flasher page (like MeshCore's) — instructions in release notes
 
 ## Version Numbering
 

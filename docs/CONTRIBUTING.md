@@ -68,10 +68,12 @@ We follow MeshCore's embedded C++ conventions:
 2. **No `std::string`, `std::vector`, or `new`.** Use C arrays, `snprintf`, and stack allocation.
 3. **No exceptions.** Compile with `-fno-exceptions`.
 4. **Keep it simple.** Think embedded. No unnecessary abstraction layers.
-5. **Same brace/indent style as MeshCore.** K&R braces, 4-space indent:
+5. **Same brace/indent style as MeshCore.** Allman/BSD braces (opening brace on own line), 4-space indent:
    ```cpp
-   void foo() {
-       if (bar) {
+   void foo()
+   {
+       if (bar)
+       {
            doThing();
        }
    }
@@ -84,11 +86,12 @@ We follow MeshCore's embedded C++ conventions:
 ```
 src/
 ├── main.cpp            # Entry point
+├── version.h           # Version constants (single source of truth)
 ├── hardware/           # Board, keyboard, GPS drivers
 ├── mesh/               # MeshCore bridge
 ├── ui/                 # LVGL screens and theme
 ├── map/                # Map tile engine
-└── utils/              # Config, logging
+└── utils/              # Config, config export/import, logging
 ```
 
 See `docs/ARCHITECTURE.md` for the full design.
@@ -106,6 +109,26 @@ See `docs/ARCHITECTURE.md` for the full design.
 2. Implement the `Board` interface (or a new subclass)
 3. Add a PlatformIO environment in `platformio.ini`
 4. Update `docs/HARDWARE.md` with pin reference
+
+## Branching
+
+| Branch | Purpose |
+|--------|----------|
+| `main` | Stable releases. Tagged with versions. Never push directly. |
+| `dev` | Active development. All PRs target this branch. CI must pass. |
+| `alpha` | From `dev` when enough features accumulate. |
+| `beta` | From `alpha` when hardware-tested and mostly working. |
+
+All PRs go to `dev`. Releases merge from `beta` to `main`.
+
+## Security
+
+- **CodeQL** scans run weekly on `main` and `dev` branches
+- **Copilot Autofix** is enabled (free for public repos) for security alerts
+- **Dependabot** and **secret scanning** are enabled
+- The CI security audit workflow scans incoming PRs for suspicious patterns
+- Report vulnerabilities privately to maintainers, not in public issues
+- **Never commit secrets, tokens, or API keys**, even in test code
 
 ## Submitting Changes
 

@@ -147,13 +147,23 @@ single background task later. Not needed for v0.1.
 | What | Where | Format | Size |
 |------|-------|--------|------|
 | Config | SPIFFS `/oms.cfg` | JSON | ~1KB |
-| Identity keys | SPIFFS `/oms.id` | Binary | ~96B |
+| Identity keys | SPIFFS `/oms.id` or `/identity.id` | Binary (MeshCore format) | ~96B |
+| Region map | SPIFFS `/regions.bin` | Binary (MeshCore format) | Varies |
 | Message log | SPIFFS `/msgs/` | JSON lines | ~100KB max |
-| Map tiles | SD card `/map/z/x/y.png` | PNG 256×256 | Varies |
+| Map tiles | SD card `/map/z/x/y.png` | PNG 256x256 | Varies |
+| Config export | SD card `/oms/config.json` | JSON | ~1KB |
+| Identity export | SD card `/oms/identity.id` | Binary (MeshCore format) | ~96B |
+| Region export | SD card `/oms/regions.bin` | Binary (MeshCore format) | Varies |
+| Contact exports | SD card `/oms/contacts/*.id` | Binary (MeshCore advert packets) | ~100B each |
 | Firmware OTA | Flash OTA slot 1 | Binary | ~6.4MB max |
 
 SPIFFS is wear-levelled by ESP-IDF but we minimise writes. Messages are
 append-only logs, rotated when they exceed quota.
+
+Config export/import (`ConfigExport.h/cpp`) copies all settings between
+SPIFFS and SD card using MeshCore-compatible binary formats. This lets users
+back up their config, share identities between devices, and restore after
+a reflash. See `docs/VERSIONING.md` for flash/recovery procedures.
 
 ## Build Flags
 
