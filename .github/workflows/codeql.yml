@@ -19,14 +19,17 @@ jobs:
         with:
           submodules: true
 
+      - name: Install PlatformIO
+        run: pip install platformio
+
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
           languages: cpp
           queries: security-extended
 
-      - name: Build
-        uses: github/codeql-action/autobuild@v3
+      - name: Build for CodeQL
+        run: pio run -e t-deck
 
       - name: Analyze
         uses: github/codeql-action/analyze@v3

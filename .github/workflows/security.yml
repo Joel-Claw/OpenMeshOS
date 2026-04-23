@@ -51,8 +51,8 @@ jobs:
 
       - name: Check for suspicious file changes
         run: |
-          git fetch origin main
-          CHANGED=$(git diff --name-only origin/main...HEAD)
+          git fetch origin ${{ github.base_ref }}
+          CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
           SUSPICIOUS=0
 
           echo "Changed files:"
@@ -73,13 +73,13 @@ jobs:
           fi
 
           # Check for secret-like strings in diff
-          if git diff origin/main...HEAD | grep -qiE '(api_key|secret|password|token|credential)\s*[:=]'; then
+          if git diff origin/${{ github.base_ref }}...HEAD | grep -qiE '(api_key|secret|password|token|credential)\s*[:=]'; then
             echo "::warning::PR diff contains possible secrets/credentials"
             SUSPICIOUS=1
           fi
 
           # Check for new dependencies added
-          NEW_DEPS=$(git diff origin/main...HEAD -- platformio.ini | grep '^\+' | grep -v '^\+\+\+' || true)
+          NEW_DEPS=$(git diff origin/${{ github.base_ref }}...HEAD -- platformio.ini | grep '^\+' | grep -v '^\+\+\+' || true)
           if [ -n "$NEW_DEPS" ]; then
             echo "::warning::PR adds new dependencies — verify they're from trusted sources"
             echo "$NEW_DEPS"
