@@ -29,6 +29,17 @@ This project was initially vibecoded by [GLM-5.1](https://github.com/THUDM/GLM-5
 | LilyGo T-Deck Plus | Target | Same + built-in GPS, different Grove pin assignment |
 | Other ESP32-S3 devices | Future | PlatformIO abstraction allows porting |
 
+## Branches
+
+| Branch | Purpose |
+|--------|----------|
+| `main` | Stable releases. Tagged with versions. Don't push directly. |
+| `dev` | Active development. PRs go here. CI must pass before merge. |
+| `alpha` | Created from `dev` when enough features accumulate for an alpha release. |
+| `beta` | Created from `alpha` when features are hardware-tested and mostly working. |
+
+Workflow: contribute to `dev` via PR. When enough changes accumulate, create `alpha` or `beta` branch from `dev`. When stable, merge to `main` and tag a release.
+
 ## Quick Start
 
 ### Prerequisites

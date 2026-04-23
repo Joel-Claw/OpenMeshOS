@@ -134,6 +134,15 @@ The merged binary is required for first-time flash or full recovery. The app-onl
 - The CI security audit workflow scans incoming PRs for suspicious patterns (binary files, workflow modifications, credential leaks, new dependencies)
 - **Never commit secrets, tokens, or API keys** — even in test code
 
+## Branching
+
+- **`main`**: Stable releases only. Tagged with versions. Never push directly.
+- **`dev`**: Active development. All PRs target this branch. CI must pass.
+- **`alpha`**: Branched from `dev` when enough features accumulate for an alpha release.
+- **`beta`**: Branched from `alpha` when features are hardware-tested and mostly working.
+
+Flow: PR to `dev`. Merge to `alpha` or `beta` when ready. Merge to `main` and tag when stable.
+
 ## Maintainer
 
 - **PeterAlfonsLoch** (Jeff) — full admin access, final say on merges
