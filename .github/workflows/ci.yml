@@ -133,7 +133,7 @@ jobs:
 
       - name: Test tile download script
         run: |
-          python3 -c "import importlib; spec = importlib.util.spec_from_file_location('download_tiles', 'scripts/download_tiles.py'); mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod); print('Module loads OK')"
+          python3 -c "import importlib.util; spec = importlib.util.spec_from_file_location('download_tiles', 'scripts/download_tiles.py'); mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod); print('Module loads OK')"
           python3 scripts/download_tiles.py --help
 
   map-engine-tests:
