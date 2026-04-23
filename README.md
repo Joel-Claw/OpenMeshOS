@@ -109,6 +109,7 @@ OpenMeshOS/
 │   │   └── MapEngine.h/cpp   # Tile renderer
 │   └── utils/
 │       ├── Config.h/cpp      # Persistent settings
+│       └── ConfigExport.h/cpp # SD card import/export (MeshCore format)
 │       └── Log.h              # Serial logger
 ├── lib/
 │   └── MeshCore/             # Git submodule (mesh protocol)
