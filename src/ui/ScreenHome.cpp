@@ -20,6 +20,7 @@
 #include "ScreenHome.h"
 #include "ScreenMap.h"
 #include "ScreenSettings.h"
+#include "ScreenTerminal.h"
 #include "Theme.h"
 #include "../utils/Log.h"
 
@@ -64,6 +65,13 @@ void ScreenHome::create() {
     lv_obj_set_size(btn_dm, LV_SIZE_CONTENT, LV_PCT(100));
     lv_obj_t* lbl_dm = lv_label_create(btn_dm);
     lv_label_set_text(lbl_dm, "DM");
+
+    // Terminal button
+    lv_obj_t* btn_term = lv_button_create(statusbar);
+    lv_obj_set_size(btn_term, 24, 24);
+    lv_obj_add_event_cb(btn_term, [](lv_event_t*){ ScreenTerminal::create(); }, LV_EVENT_CLICKED, nullptr);
+    lv_obj_t* lbl_term = lv_label_create(btn_term);
+    lv_label_set_text(lbl_term, ">");
 
     // Map button (next to settings)
     lv_obj_t* btn_map = lv_button_create(statusbar);
