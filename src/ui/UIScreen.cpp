@@ -6,6 +6,8 @@
 
 #include "UIScreen.h"
 #include "ScreenHome.h"
+#include "ScreenMap.h"
+#include "ScreenSettings.h"
 #include "Theme.h"
 #include "../hardware/Board.h"
 #include "../utils/Log.h"
@@ -90,14 +92,19 @@ void tick() {
     int16_t dx, dy;
     board.consumeTrackballDelta(dx, dy);
 
-    // Trackball vertical = encoder rotation
-    if (dy > 0) enc_diff += dy;
-    if (dy < 0) enc_diff += dy;  // negative = scroll up
-    if (dx != 0) enc_diff += dx; // horizontal also useful
+    // If map screen is active, give it raw input for pan/zoom
+    if (ScreenMap::isActive()) {
+        ScreenMap::feedInput(dx, dy, board.consumeTrackballPress());
+    } else {
+        // Trackball vertical = encoder rotation
+        if (dy > 0) enc_diff += dy;
+        if (dy < 0) enc_diff += dy;  // negative = scroll up
+        if (dx != 0) enc_diff += dx; // horizontal also useful
 
-    // Trackball press = encoder click
-    if (board.consumeTrackballPress()) {
-        enc_pressed = true;
+        // Trackball press = encoder click
+        if (board.consumeTrackballPress()) {
+            enc_pressed = true;
+        }
     }
 
     // Drive LVGL

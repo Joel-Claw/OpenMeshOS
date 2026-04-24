@@ -18,6 +18,8 @@
 // We use LVGL's flex layout for automatic positioning.
 
 #include "ScreenHome.h"
+#include "ScreenMap.h"
+#include "ScreenSettings.h"
 #include "Theme.h"
 #include "../utils/Log.h"
 
@@ -30,6 +32,8 @@ lv_obj_t* ScreenHome::_inputBar  = nullptr;
 
 void ScreenHome::create() {
     OMS_LOG("UI", "Creating home screen");
+
+    lv_obj_t* old = lv_screen_active();
 
     _screen = lv_obj_create(nullptr);
     lv_obj_set_size(_screen, OMS_SCREEN_W, OMS_SCREEN_H);
@@ -61,9 +65,17 @@ void ScreenHome::create() {
     lv_obj_t* lbl_dm = lv_label_create(btn_dm);
     lv_label_set_text(lbl_dm, "DM");
 
+    // Map button (next to settings)
+    lv_obj_t* btn_map = lv_button_create(statusbar);
+    lv_obj_set_size(btn_map, 24, 24);
+    lv_obj_add_event_cb(btn_map, [](lv_event_t*){ ScreenMap::create(); }, LV_EVENT_CLICKED, nullptr);
+    lv_obj_t* lbl_map = lv_label_create(btn_map);
+    lv_label_set_text(lbl_map, LV_SYMBOL_GPS);
+
     // Settings gear (far right)
     lv_obj_t* btn_settings = lv_button_create(statusbar);
     lv_obj_set_size(btn_settings, 24, 24);
+    lv_obj_add_event_cb(btn_settings, [](lv_event_t*){ ScreenSettings::create(); }, LV_EVENT_CLICKED, nullptr);
     lv_obj_t* lbl_settings = lv_label_create(btn_settings);
     lv_label_set_text(lbl_settings, LV_SYMBOL_SETTINGS);
 
@@ -103,6 +115,7 @@ void ScreenHome::create() {
 
     // ── Load screen ──────────────────────────────────────────────────
     lv_screen_load(_screen);
+    if (old) lv_obj_del(old);
 }
 
 }}  // namespace oms::ui

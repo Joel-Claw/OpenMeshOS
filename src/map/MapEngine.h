@@ -37,6 +37,7 @@ public:
     void addNode(const MapNode& node);
     void clearNodes();
     uint16_t nodeCount() const;
+    const MapNode* nodes() const { return _nodes; }
 
     // Tile management
     bool hasTileDir() const;      // SD card present with /map/
@@ -49,6 +50,11 @@ public:
     // Coordinate conversion
     static void latLngToTile(float lat, float lng, int z, int& tx, int& ty);
     static void tileToLatLng(int tx, int ty, int z, float& lat, float& lng);
+
+    // Accessors for UI
+    int zoom() const { return _zoom; }
+    float centerLat() const { return _centerLat; }
+    float centerLng() const { return _centerLng; }
 
 private:
     float  _centerLat = 49.6117f;   // Luxembourg :)
