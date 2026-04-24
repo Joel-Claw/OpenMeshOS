@@ -19,6 +19,10 @@ Current firmware version: **0.1.0-alpha.1** (first compile, not flashed to hardw
 - [x] Config export/import via SD card (MeshCore-compatible format)
 - [x] Branching model (main/dev/alpha/beta)
 - [x] Release v0.1.0-alpha.1 (draft firmware on GitHub)
+- [x] ScreenMap: offline map with pan/zoom via trackball
+- [x] ScreenSettings: device info, mesh config, export/import, about
+- [x] ScreenTerminal: built-in command interpreter (help, version, info, etc.)
+- [x] Screen navigation: proper cleanup, back buttons, status bar buttons
 - [ ] **Human review needed**: Validate pin assignments against T-Deck schematic
 - [ ] **Human review needed**: Test TFT_eSPI User_Setup.h configuration
 - [ ] **Human review needed**: Verify LVGL 9 integration with TFT_eSPI on ESP32-S3

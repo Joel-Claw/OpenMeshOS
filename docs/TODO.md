@@ -2,10 +2,11 @@
 
 ## Immediate (before first flash)
 
-- [x] Verify all GPIO pin assignments against [T-Deck schematic](https://github.com/Xinyuan-LilyGO/T-Deck) — done from docs, needs hardware validation
+- [x] Verify all GPIO pin assignments against T-Deck schematic — done from docs, needs hardware validation
 - [x] Create TFT_eSPI `User_Setup.h` for T-Deck ST7789 config
-- [x] Test first compile: `pio run -e t-deck` — compiles clean (586KB)
+- [x] Test first compile: `pio run -e t-deck` — compiles clean (663KB)
 - [x] Fix all compile errors — all resolved
+- [x] ScreenMap, ScreenSettings, ScreenTerminal implemented
 - [ ] Flash to T-Deck, verify serial output appears
 - [ ] Confirm display shows something (even just a black screen with backlight)
 
