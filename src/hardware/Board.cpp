@@ -69,6 +69,13 @@ void Board::init() {
     // Keyboard I2C
     Wire.begin(PIN_KB_SDA, PIN_KB_SCL);
 
+    // BBQ10KB keyboard init
+    if (_keyboard.begin(&Wire)) {
+        OMS_LOG("Board", "Keyboard ready");
+    } else {
+        OMS_LOG("Board", "Keyboard not found, continuing without");
+    }
+
     // Trackball GPIOs
     pinMode(PIN_TRACKBALL_UP,    INPUT_PULLUP);
     pinMode(PIN_TRACKBALL_DOWN,  INPUT_PULLUP);

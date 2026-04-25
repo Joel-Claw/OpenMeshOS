@@ -10,6 +10,7 @@
 #ifdef OMS_HAS_BUILTIN_GPS
 #include <TinyGPSPlus.h>
 #endif
+#include "Keyboard.h"
 
 namespace oms {
 
@@ -23,6 +24,10 @@ public:
     // Trackball
     bool consumeTrackballPress();
     void consumeTrackballDelta(int16_t &dx, int16_t &dy);
+
+    // Keyboard
+    Keyboard& keyboard() { return _keyboard; }
+    bool hasKeyboard() const { return _keyboard.isPresent(); }
 
     // GPS
     bool hasGPSFix() const;
@@ -41,6 +46,9 @@ private:
     int16_t _trackballX = 0;
     int16_t _trackballY = 0;
     bool    _trackballPressed = false;
+
+    // BBQ10KB keyboard
+    Keyboard _keyboard;
 
 #ifdef OMS_HAS_BUILTIN_GPS
     HardwareSerial _gpsSerial{1};   // UART1 for GPS

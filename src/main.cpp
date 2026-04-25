@@ -6,10 +6,13 @@
 #include <Arduino.h>
 #include "version.h"
 #include "hardware/Board.h"
+#include "hardware/KeyboardInput.h"
 #include "mesh/MeshService.h"
 #include "ui/UIScreen.h"
 #include "utils/Log.h"
 #include "utils/Config.h"
+
+static oms::KeyboardInput s_kbInput;
 
 // ── Setup ───────────────────────────────────────────────────────────
 void setup() {
@@ -30,12 +33,16 @@ void setup() {
     // 4) Initialise UI (LVGL + screen driver)
     oms::ui::init();
 
+    // 5) Initialise keyboard LVGL indev
+    s_kbInput.initIndev();
+
     OMS_LOG("main", "Ready");
 }
 
 // ── Loop ────────────────────────────────────────────────────────────
 void loop() {
     oms::Board::instance().tick();
+    s_kbInput.update(oms::Board::instance().keyboard());
     oms::MeshService::instance().tick();
     oms::ui::tick();
 }
