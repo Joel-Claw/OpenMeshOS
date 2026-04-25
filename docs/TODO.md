@@ -12,10 +12,25 @@
 
 ## Keyboard Driver
 
-- [ ] Implement BBQ10KB I2C driver (`src/hardware/Keyboard.h/cpp`)
-- [ ] Key event mapping to LVGL
-- [ ] Special keys: Enter, Esc, Tab, Backspace
+- [x] Implement BBQ10KB I2C driver (`src/hardware/Keyboard.h/cpp`)
+- [x] Key event mapping to LVGL via indev bridge (`src/hardware/KeyboardInput.h/cpp`)
+- [x] Special keys: Enter, Esc, Tab, Backspace
+- [x] Modifier tracking: Shift, Ctrl, Alt, Sym
 - [ ] Test all keys produce correct input
+
+## Trackball
+
+- [ ] Detect I2C trackball variant (AFBR S10) vs GPIO variant
+- [ ] Implement I2C trackball polling for affected models
+- [ ] Trackball down not working on some T-Deck models (I2C variant)
+- [ ] Test trackball on both hardware revisions
+
+## Research Sources
+
+- [ ] Review Aurora firmware trackball implementation
+- [ ] Review LilyGo official T-Deck examples
+- [ ] Review community firmware projects (beyond MeshOS)
+- [ ] Don't just copy MeshOS patterns - cross-reference multiple implementations
 
 ## MeshCore Integration
 
