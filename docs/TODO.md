@@ -20,7 +20,7 @@
 
 ## Trackball
 
-- [ ] Detect I2C trackball variant (AFBR S10) vs GPIO variant
+- [x] Detect I2C trackball variant (AFBR S10) vs GPIO variant
 - [ ] Implement I2C trackball polling for affected models
 - [ ] Trackball down not working on some T-Deck models (I2C variant)
 - [ ] Test trackball on both hardware revisions
