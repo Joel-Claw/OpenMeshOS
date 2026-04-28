@@ -32,11 +32,20 @@ static constexpr gpio_num_t PIN_BACKLIGHT   = GPIO_NUM_2;
 
 static constexpr gpio_num_t PIN_KB_SDA     = GPIO_NUM_18;
 static constexpr gpio_num_t PIN_KB_SCL     = GPIO_NUM_8;
-static constexpr gpio_num_t PIN_TRACKBALL_UP    = GPIO_NUM_3;
-static constexpr gpio_num_t PIN_TRACKBALL_DOWN  = GPIO_NUM_15;
-static constexpr gpio_num_t PIN_TRACKBALL_LEFT  = GPIO_NUM_21;
-static constexpr gpio_num_t PIN_TRACKBALL_RIGHT = GPIO_NUM_43;
-static constexpr gpio_num_t PIN_TRACKBALL_PRESS = GPIO_NUM_44;
+
+// Trackball GPIO V1 (original boards)
+static constexpr gpio_num_t PIN_TB_V1_UP    = GPIO_NUM_3;
+static constexpr gpio_num_t PIN_TB_V1_DOWN  = GPIO_NUM_15;
+static constexpr gpio_num_t PIN_TB_V1_LEFT  = GPIO_NUM_21;
+static constexpr gpio_num_t PIN_TB_V1_RIGHT = GPIO_NUM_43;
+static constexpr gpio_num_t PIN_TB_V1_PRESS = GPIO_NUM_44;
+
+// Trackball GPIO V2 (newer boards)
+static constexpr gpio_num_t PIN_TB_V2_UP    = GPIO_NUM_3;
+static constexpr gpio_num_t PIN_TB_V2_DOWN  = GPIO_NUM_15;
+static constexpr gpio_num_t PIN_TB_V2_LEFT  = GPIO_NUM_1;
+static constexpr gpio_num_t PIN_TB_V2_RIGHT = GPIO_NUM_2;
+static constexpr gpio_num_t PIN_TB_V2_PRESS = GPIO_NUM_0;
 
 static constexpr gpio_num_t PIN_GPS_TX     = GPIO_NUM_17;
 static constexpr gpio_num_t PIN_GPS_RX     = GPIO_NUM_16;
@@ -54,7 +63,7 @@ void Board::init() {
 
     // SPIFFS for config / keys / messages
     if (!SPIFFS.begin(true)) {
-        OMS_LOG("Board", "SPIFFS mount failed — formatting");
+        OMS_LOG("Board", "SPIFFS mount failed, formatting");
         SPIFFS.format();
         SPIFFS.begin(true);
     }
@@ -76,12 +85,9 @@ void Board::init() {
         OMS_LOG("Board", "Keyboard not found, continuing without");
     }
 
-    // Trackball GPIOs
-    pinMode(PIN_TRACKBALL_UP,    INPUT_PULLUP);
-    pinMode(PIN_TRACKBALL_DOWN,  INPUT_PULLUP);
-    pinMode(PIN_TRACKBALL_LEFT,  INPUT_PULLUP);
-    pinMode(PIN_TRACKBALL_RIGHT, INPUT_PULLUP);
-    pinMode(PIN_TRACKBALL_PRESS, INPUT_PULLUP);
+    // Trackball auto-detection (probes I2C + GPIO variants)
+    _trackball.begin(Wire);
+    OMS_LOG("Board", "Trackball: %s", _trackball.typeName());
 
     // GPS serial (T-Deck Plus has built-in GPS)
 #ifdef OMS_HAS_BUILTIN_GPS
@@ -96,13 +102,8 @@ void Board::init() {
 void Board::tick() {
     if (!_initialized) return;
 
-    // Poll trackball
-    _trackballY += (!digitalRead(PIN_TRACKBALL_DOWN) - !digitalRead(PIN_TRACKBALL_UP));
-    _trackballX += (!digitalRead(PIN_TRACKBALL_RIGHT) - !digitalRead(PIN_TRACKBALL_LEFT));
-
-    if (!digitalRead(PIN_TRACKBALL_PRESS)) {
-        _trackballPressed = true;
-    }
+    // Poll trackball (handles GPIO and I2C internally)
+    _trackball.tick();
 
     // GPS serial read (if present)
 #ifdef OMS_HAS_BUILTIN_GPS
@@ -113,22 +114,6 @@ void Board::tick() {
 
     // Battery ADC (T-Deck uses voltage divider on IO4 or IO1 depending on rev)
     // TODO: implement proper ADC read after pin validation
-}
-
-// ── Trackball debounce ─────────────────────────────────────────────
-bool Board::consumeTrackballPress() {
-    if (_trackballPressed) {
-        _trackballPressed = false;
-        return true;
-    }
-    return false;
-}
-
-void Board::consumeTrackballDelta(int16_t &dx, int16_t &dy) {
-    dx = _trackballX;
-    dy = _trackballY;
-    _trackballX = 0;
-    _trackballY = 0;
 }
 
 // ── GPS ───────────────────────────────────────────────────────────

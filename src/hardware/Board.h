@@ -11,6 +11,7 @@
 #include <TinyGPSPlus.h>
 #endif
 #include "Keyboard.h"
+#include "Trackball.h"
 
 namespace oms {
 
@@ -21,9 +22,10 @@ public:
     void init();
     void tick();
 
-    // Trackball
-    bool consumeTrackballPress();
-    void consumeTrackballDelta(int16_t &dx, int16_t &dy);
+    // Trackball (delegates to Trackball driver)
+    bool consumeTrackballPress() { return _trackball.consumePress(); }
+    void consumeTrackballDelta(int16_t &dx, int16_t &dy) { _trackball.consumeDelta(dx, dy); }
+    Trackball& trackball() { return _trackball; }
 
     // Keyboard
     Keyboard& keyboard() { return _keyboard; }
@@ -42,10 +44,8 @@ public:
 private:
     bool _initialized = false;
 
-    // Trackball accumulator
-    int16_t _trackballX = 0;
-    int16_t _trackballY = 0;
-    bool    _trackballPressed = false;
+    // Trackball driver (auto-detects GPIO v1, v2, or I2C)
+    Trackball _trackball;
 
     // BBQ10KB keyboard
     Keyboard _keyboard;
