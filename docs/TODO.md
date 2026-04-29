@@ -34,10 +34,21 @@
 
 ## MeshCore Integration
 
-- [ ] Create `TDeckBoard` class implementing `mesh::MainBoard`
-  - `getBattMilliVolts()` — read ADC
+- [x] Create `TDeckBoard` class implementing `mesh::MainBoard`
+  - `getBattMilliVolts()` — ADC on GPIO1
   - `getMCUTemperature()` — ESP32 internal temp
   - `reboot()` — ESP.restart()
+  - `getResetReason()` — esp_reset_reason()
+- [x] Create `TDeckClock` class implementing `mesh::RTCClock`
+  - GPS time sync
+  - NTP fallback
+  - millis() drift tracking
+- [x] Wire TDeckBoard + TDeckClock into MeshService
+- [ ] Load identity (private key) from SPIFFS or generate new
+- [ ] Configure radio region (EU868 / US915 etc) from Config
+- [ ] Start MeshCore loop in MeshService::tick()
+- [ ] Wire MeshService::sendChannel/sendDirect through MeshCore
+- [ ] Wire hopCount/rssi from MeshCore state
   - `getManufacturerName()` — return "LilyGo"
   - `getStartupReason()` — check RTC memory
 - [ ] Create `TDeckClock` class implementing `mesh::RTCClock`
