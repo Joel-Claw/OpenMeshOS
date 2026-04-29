@@ -8,8 +8,13 @@
 
 namespace oms {
 
+// Forward declarations
+class TDeckBoard;
+class TDeckClock;
+
 class MeshService {
 public:
+    MeshService() = default;
     static MeshService& instance();
 
     void init();
@@ -25,8 +30,14 @@ public:
 
     bool initialized() const { return _initialized; }
 
+    // Access to board/clock for other subsystems
+    TDeckBoard& board() { return *_board; }
+    TDeckClock& clock() { return *_clock; }
+
 private:
     bool _initialized = false;
+    TDeckBoard* _board = nullptr;
+    TDeckClock* _clock = nullptr;
 };
 
 }  // namespace oms

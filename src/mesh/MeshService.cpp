@@ -5,6 +5,8 @@
 // It owns the radio, identity, and message dispatch loop.
 
 #include "MeshService.h"
+#include "TDeckBoard.h"
+#include "TDeckClock.h"
 #include "../hardware/Board.h"
 #include "../utils/Config.h"
 #include "../utils/Log.h"
@@ -23,12 +25,17 @@ MeshService& MeshService::instance() {
 void MeshService::init() {
     OMS_LOG("Mesh", "Initialising MeshCore stack");
 
-    // TODO: Create our MainBoard subclass that implements mesh::MainBoard
-    //       with T-Deck specific battery/temperature/reboot callbacks.
-    // TODO: Create RTCClock subclass synced from GPS or NTP.
-    // TODO: Load identity (private key) from SPIFFS or generate new.
-    // TODO: Configure radio region (EU868 / US915 etc) from Config.
-    // TODO: Start MeshCore loop.
+    // Create board and clock implementations
+    _board = new TDeckBoard();
+    _clock = new TDeckClock();
+
+    OMS_LOG("Mesh", "Board: %s", _board->getManufacturerName());
+    OMS_LOG("Mesh", "ADC multiplier: %.2f", _board->getAdcMultiplier());
+
+    // TODO: Load identity from SPIFFS or generate new
+    // TODO: Configure radio region (EU868 / US915 etc) from Config
+    // TODO: Create MeshCore node with board, clock, identity
+    // TODO: Start MeshCore loop
 
     _initialized = true;
     OMS_LOG("Mesh", "MeshCore ready");
@@ -39,6 +46,8 @@ void MeshService::tick() {
     if (!_initialized) return;
 
     // Process incoming packets, housekeeping, advert handling etc.
+    _clock->tick();
+
     // TODO: call mesh->loop() equivalent
 }
 
