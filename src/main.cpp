@@ -4,6 +4,7 @@
 // Initialises hardware, MeshCore, and the UI task loop.
 
 #include <Arduino.h>
+#include <SPIFFS.h>
 #include "version.h"
 #include "hardware/Board.h"
 #include "hardware/KeyboardInput.h"
@@ -21,7 +22,16 @@ void setup() {
 
     OMS_LOG("main", "OpenMeshOS v" OMS_VERSION_STRING " starting");
 
-    // 1) Load persistent config from SPIFFS / SD
+    // 1) Initialise SPIFFS (must come before config and mesh)
+    if (!SPIFFS.begin(true)) {
+        OMS_LOG("main", "WARNING: SPIFFS mount failed, formatting");
+        SPIFFS.format();
+        if (!SPIFFS.begin(true)) {
+            OMS_LOG("main", "ERROR: SPIFFS unavailable, some features will fail");
+        }
+    }
+
+    // 2) Load persistent config from SPIFFS / SD
     oms::config::init();
 
     // 2) Initialise board-level hardware (display, keyboard, trackball, LoRa, GPS)

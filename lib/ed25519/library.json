@@ -1,0 +1,6 @@
+{
+  "name": "ed25519",
+  "version": "1.0.0",
+  "description": "Ed25519 cryptographic library (orlp/ed25519) for MeshCore identity",
+  "build": {}
+}
