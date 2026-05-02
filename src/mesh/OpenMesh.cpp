@@ -2,10 +2,10 @@
 // Copyright 2026 Joel Claw & contributors — WTFPL v2
 //
 // MeshCore callback implementations for OpenMeshOS.
-// For now, these log incoming messages and forward packets.
-// Real UI integration will come once the display and input stack is ready.
+// Received messages are pushed into MessageBus for the UI to consume.
 
 #include "OpenMesh.h"
+#include "MessageBus.h"
 #include "../utils/Log.h"
 
 namespace oms {
@@ -26,6 +26,18 @@ void OpenMesh::onPeerDataRecv(mesh::Packet* packet, uint8_t type, int sender_idx
         memcpy(text, data, copyLen);
         text[copyLen] = '\0';
         OMS_LOG("Mesh", "DM: \"%s\" (%u bytes)", text, (unsigned)len);
+
+        // Push to inbox for UI
+        InboxMessage msg = {};
+        msg.kind = MsgKind::DirectMessage;
+        msg.channel_id = 0;
+        // Use sender index as short identifier
+        snprintf(msg.sender, sizeof(msg.sender), "DM-%d", sender_idx);
+        copyLen = len < MSG_MAX_LEN ? len : MSG_MAX_LEN;
+        memcpy(msg.text, data, copyLen);
+        msg.text[copyLen] = '\0';
+        msg.timestamp = millis();
+        MessageBus::inbox().push(msg);
     }
 }
 
@@ -37,6 +49,19 @@ void OpenMesh::onGroupDataRecv(mesh::Packet* packet, uint8_t type,
         memcpy(text, data, copyLen);
         text[copyLen] = '\0';
         OMS_LOG("Mesh", "Group: \"%s\" (%u bytes, type=%u)", text, (unsigned)len, type);
+
+        if (type == PAYLOAD_TYPE_TXT_MSG) {
+            // Push to inbox for UI
+            InboxMessage msg = {};
+            msg.kind = MsgKind::GroupChannel;
+            msg.channel_id = channel.hash[0];  // use first byte of hash as channel ID
+            snprintf(msg.sender, sizeof(msg.sender), "CH%02X", channel.hash[0]);
+            size_t msgCopyLen = len < MSG_MAX_LEN ? len : MSG_MAX_LEN;
+            memcpy(msg.text, data, msgCopyLen);
+            msg.text[msgCopyLen] = '\0';
+            msg.timestamp = millis();
+            MessageBus::inbox().push(msg);
+        }
     }
 }
 

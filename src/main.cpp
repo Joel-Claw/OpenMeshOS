@@ -10,6 +10,7 @@
 #include "hardware/KeyboardInput.h"
 #include "mesh/MeshService.h"
 #include "ui/UIScreen.h"
+#include "ui/ScreenHome.h"
 #include "utils/Log.h"
 #include "utils/Config.h"
 
@@ -55,4 +56,6 @@ void loop() {
     s_kbInput.update(oms::Board::instance().keyboard());
     oms::MeshService::instance().tick();
     oms::ui::tick();
+    // Drain mesh message inbox into UI
+    oms::ui::ScreenHome::updateMessages();
 }

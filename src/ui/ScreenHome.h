@@ -14,6 +14,13 @@ class ScreenHome {
 public:
     static void create();
 
+    /// Drain MessageBus inbox and add messages to the list.
+    /// Call this from the main loop (after MeshService::tick()).
+    static void updateMessages();
+
+    /// Send the current textarea content as a mesh message.
+    static void sendInput();
+
 private:
     static lv_obj_t* _screen;
     static lv_obj_t* _channelTab;

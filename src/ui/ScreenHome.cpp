@@ -22,6 +22,8 @@
 #include "ScreenSettings.h"
 #include "ScreenTerminal.h"
 #include "Theme.h"
+#include "../mesh/MessageBus.h"
+#include "../mesh/MeshService.h"
 #include "../utils/Log.h"
 
 namespace oms { namespace ui {
@@ -30,6 +32,40 @@ lv_obj_t* ScreenHome::_screen    = nullptr;
 lv_obj_t* ScreenHome::_channelTab = nullptr;
 lv_obj_t* ScreenHome::_msgList   = nullptr;
 lv_obj_t* ScreenHome::_inputBar  = nullptr;
+static lv_obj_t* s_textarea = nullptr;  // input textarea reference
+
+void ScreenHome::updateMessages() {
+    if (!_msgList) return;
+
+    // Drain all pending messages from the inbox
+    InboxMessage msg;
+    while (MessageBus::inbox().pop(msg)) {
+        const char* prefix = (msg.kind == MsgKind::DirectMessage) ? "[DM]" : "[CH]";
+
+        // Format: "[DM] sender: text" or "[CH] CH0: text"
+        char buf[MSG_MAX_LEN + 20];
+        snprintf(buf, sizeof(buf), "%s %s: %s", prefix, msg.sender, msg.text);
+
+        lv_obj_t* btn = lv_list_add_btn(_msgList, nullptr, buf);
+        lv_obj_set_style_text_color(btn, theme::TEXT, 0);
+        lv_obj_set_style_bg_color(btn, theme::BG, 0);
+
+        // Auto-scroll to bottom
+        lv_obj_scroll_to_y(_msgList, lv_obj_get_scroll_y(_msgList) + 50, LV_ANIM_OFF);
+    }
+}
+
+void ScreenHome::sendInput() {
+    if (!s_textarea) return;
+    const char* text = lv_textarea_get_text(s_textarea);
+    if (!text || text[0] == '\0') return;
+
+    // Send via mesh service
+    MeshService::instance().sendChannel("#Public", text);
+
+    // Clear input
+    lv_textarea_set_text(s_textarea, "");
+}
 
 void ScreenHome::create() {
     OMS_LOG("UI", "Creating home screen");
@@ -113,11 +149,13 @@ void ScreenHome::create() {
     lv_obj_set_style_bg_color(textarea, theme::BG, 0);
     lv_obj_set_style_text_color(textarea, theme::TEXT, 0);
     lv_textarea_set_placeholder_text(textarea, "Type a message...");
+    s_textarea = textarea;
 
     lv_obj_t* send_btn = lv_button_create(_inputBar);
     lv_obj_set_size(send_btn, 36, 30);
     lv_obj_align(send_btn, LV_ALIGN_RIGHT_MID, -4, 0);
     lv_obj_set_style_bg_color(send_btn, theme::PRIMARY, 0);
+    lv_obj_add_event_cb(send_btn, [](lv_event_t*){ ScreenHome::sendInput(); }, LV_EVENT_CLICKED, nullptr);
     lv_obj_t* send_lbl = lv_label_create(send_btn);
     lv_label_set_text(send_lbl, LV_SYMBOL_RIGHT);
 
