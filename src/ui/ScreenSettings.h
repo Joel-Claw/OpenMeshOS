@@ -22,6 +22,7 @@ public:
     // Sub-pages
     static void showDeviceInfo();
     static void showMeshConfig();
+    static void showDisplay();
     static void showExportImport();
     static void showAbout();
 

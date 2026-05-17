@@ -8,19 +8,23 @@
 //   |------------------------------|
 //   | Device Info          >       |  menu items
 //   | Mesh Config          >       |
+//   | Display              >       |
 //   | Export / Import       >       |
 //   | About                 >       |
-//   |                              |
 //   |                              |
 //   | v0.1.0-alpha.1               |  version
 //   +------------------------------+ 320px wide
 //
-// Each menu item opens a sub-page within this screen
-// (we reuse the screen object and swap content).
+// Each menu item opens a sub-page with interactive controls.
+// Mesh Config: callsign (textarea), region (roller).
+// Display: brightness (slider), timeout (roller), sound (switch).
 
 #include "ScreenSettings.h"
 #include "ScreenHome.h"
 #include "Theme.h"
+#include "../mesh/MeshService.h"
+#include "../mesh/TDeckBoard.h"
+#include "../hardware/Board.h"
 #include "../utils/Config.h"
 #include "../utils/ConfigExport.h"
 #include "../utils/Log.h"
@@ -44,6 +48,10 @@ static void device_info_cb(lv_event_t* e) {
 
 static void mesh_config_cb(lv_event_t* e) {
     ScreenSettings::showMeshConfig();
+}
+
+static void display_cb(lv_event_t* e) {
+    ScreenSettings::showDisplay();
 }
 
 static void export_import_cb(lv_event_t* e) {
@@ -107,11 +115,15 @@ void ScreenSettings::create() {
     lv_obj_set_style_text_color(item, theme::TEXT, 0);
     lv_obj_add_event_cb(item, mesh_config_cb, LV_EVENT_CLICKED, nullptr);
 
+    item = lv_list_add_btn(_menuList, LV_SYMBOL_IMAGE, "Display");
+    lv_obj_set_style_text_color(item, theme::TEXT, 0);
+    lv_obj_add_event_cb(item, display_cb, LV_EVENT_CLICKED, nullptr);
+
     item = lv_list_add_btn(_menuList, LV_SYMBOL_SAVE, "Export / Import");
     lv_obj_set_style_text_color(item, theme::TEXT, 0);
     lv_obj_add_event_cb(item, export_import_cb, LV_EVENT_CLICKED, nullptr);
 
-    item = lv_list_add_btn(_menuList, LV_SYMBOL_IMAGE, "About");
+    item = lv_list_add_btn(_menuList, LV_SYMBOL_BELL, "About");
     lv_obj_set_style_text_color(item, theme::TEXT, 0);
     lv_obj_add_event_cb(item, about_cb, LV_EVENT_CLICKED, nullptr);
 
@@ -160,6 +172,7 @@ static lv_obj_t* create_sub_page(const char* title) {
     return ScreenSettings::_menuList;
 }
 
+// ── Device Info ────────────────────────────────────────────────────
 void ScreenSettings::showDeviceInfo() {
     OMS_LOG("UI", "Settings: device info");
     lv_obj_t* list = create_sub_page("Device Info");
@@ -185,6 +198,49 @@ void ScreenSettings::showDeviceInfo() {
     snprintf(buf, sizeof(buf), "Uptime: %lu s", (unsigned long)(millis() / 1000));
     item = lv_list_add_btn(list, nullptr, buf);
     lv_obj_set_style_text_color(item, theme::TEXT_MUTED, 0);
+
+    // Battery voltage (live)
+    if (MeshService::instance().initialized()) {
+        uint16_t mv = MeshService::instance().board().getBattMilliVolts();
+        snprintf(buf, sizeof(buf), "Battery: %.2f V", mv / 1000.0f);
+    } else {
+        snprintf(buf, sizeof(buf), "Battery: --");
+    }
+    item = lv_list_add_btn(list, nullptr, buf);
+    lv_obj_set_style_text_color(item, theme::TEXT_MUTED, 0);
+
+    // MCU temperature
+    if (MeshService::instance().initialized()) {
+        float temp = MeshService::instance().board().getMCUTemperature();
+        snprintf(buf, sizeof(buf), "MCU temp: %.1f C", temp);
+    } else {
+        snprintf(buf, sizeof(buf), "MCU temp: --");
+    }
+    item = lv_list_add_btn(list, nullptr, buf);
+    lv_obj_set_style_text_color(item, theme::TEXT_MUTED, 0);
+}
+
+// ── Mesh Config (interactive) ──────────────────────────────────────
+static lv_obj_t* s_callsignArea = nullptr;
+static lv_obj_t* s_regionRoller = nullptr;
+
+static void save_callsign_cb(lv_event_t* e) {
+    if (!s_callsignArea) return;
+    const char* text = lv_textarea_get_text(s_callsignArea);
+    if (text && text[0] != '\0') {
+        oms::config::setCallsign(text);
+        OMS_LOG("UI", "Callsign set to: %s", text);
+    }
+}
+
+static void save_region_cb(lv_event_t* e) {
+    if (!s_regionRoller) return;
+    uint16_t sel = lv_roller_get_selected(s_regionRoller);
+    const char* regions[] = {"EU868", "US915", "AU915", "AS923", "KR920", "IN865"};
+    if (sel < 6) {
+        oms::config::setRegion(regions[sel]);
+        OMS_LOG("UI", "Region set to: %s (restart required)", regions[sel]);
+    }
 }
 
 void ScreenSettings::showMeshConfig() {
@@ -193,28 +249,152 @@ void ScreenSettings::showMeshConfig() {
 
     const auto& cfg = oms::config::get();
 
-    char buf[64];
+    // ── Callsign ─────────────────────────────────────────────────
+    lv_obj_t* label = lv_label_create(list);
+    lv_label_set_text(label, "Callsign:");
+    lv_obj_set_style_text_color(label, theme::TEXT, 0);
 
-    snprintf(buf, sizeof(buf), "Region: %s", cfg.radioRegion);
+    s_callsignArea = lv_textarea_create(list);
+    lv_textarea_set_text(s_callsignArea, cfg.callsign);
+    lv_textarea_set_max_length(s_callsignArea, 15);
+    lv_textarea_set_one_line(s_callsignArea, true);
+    lv_obj_set_width(s_callsignArea, OMS_SCREEN_W - 20);
+    lv_obj_set_style_bg_color(s_callsignArea, theme::BG, 0);
+    lv_obj_set_style_text_color(s_callsignArea, theme::TEXT, 0);
+    lv_obj_add_event_cb(s_callsignArea, save_callsign_cb, LV_EVENT_READY, nullptr);
+
+    // ── Region ────────────────────────────────────────────────────
+    label = lv_label_create(list);
+    lv_label_set_text(label, "Radio Region:");
+    lv_obj_set_style_text_color(label, theme::TEXT, 0);
+
+    s_regionRoller = lv_roller_create(list);
+    lv_roller_set_options(s_regionRoller,
+        "EU868\nUS915\nAU915\nAS923\nKR920\nIN865",
+        LV_ROLLER_MODE_NORMAL);
+    lv_roller_set_visible_row_count(s_regionRoller, 3);
+    lv_obj_set_width(s_regionRoller, OMS_SCREEN_W - 20);
+
+    // Set current selection
+    const char* regions[] = {"EU868", "US915", "AU915", "AS923", "KR920", "IN865"};
+    uint16_t sel = 0;
+    for (int i = 0; i < 6; i++) {
+        if (strncmp(cfg.radioRegion, regions[i], sizeof(cfg.radioRegion)) == 0) {
+            sel = i;
+            break;
+        }
+    }
+    lv_roller_set_selected(s_regionRoller, sel, LV_ANIM_OFF);
+    lv_obj_add_event_cb(s_regionRoller, save_region_cb, LV_EVENT_VALUE_CHANGED, nullptr);
+
+    // ── Info ──────────────────────────────────────────────────────
+    char buf[64];
+    snprintf(buf, sizeof(buf), "Channel: %d", cfg.channel);
     lv_obj_t* item = lv_list_add_btn(list, nullptr, buf);
     lv_obj_set_style_text_color(item, theme::TEXT_MUTED, 0);
 
-    snprintf(buf, sizeof(buf), "Callsign: %s", cfg.callsign);
-    item = lv_list_add_btn(list, nullptr, buf);
+    item = lv_list_add_btn(list, nullptr, "Changes auto-saved.");
     lv_obj_set_style_text_color(item, theme::TEXT_MUTED, 0);
 
-    snprintf(buf, sizeof(buf), "Channel: %d", cfg.channel);
-    item = lv_list_add_btn(list, nullptr, buf);
-    lv_obj_set_style_text_color(item, theme::TEXT_MUTED, 0);
-
-    snprintf(buf, sizeof(buf), "Brightness: %d", cfg.brightness);
-    item = lv_list_add_btn(list, nullptr, buf);
-    lv_obj_set_style_text_color(item, theme::TEXT_MUTED, 0);
-
-    item = lv_list_add_btn(list, nullptr, "Reconnect on change: restart");
-    lv_obj_set_style_text_color(item, theme::TEXT_MUTED, 0);
+    item = lv_list_add_btn(list, nullptr, "Region: restart to apply.");
+    lv_obj_set_style_text_color(item, theme::ORANGE, 0);
 }
 
+// ── Display Settings (interactive) ─────────────────────────────────
+static lv_obj_t* s_brightnessSlider = nullptr;
+static lv_obj_t* s_timeoutRoller = nullptr;
+static lv_obj_t* s_soundSwitch = nullptr;
+
+static void brightness_cb(lv_event_t* e) {
+    if (!s_brightnessSlider) return;
+    int val = lv_slider_get_value(s_brightnessSlider);
+    oms::Config mutable_cfg = oms::config::get();
+    mutable_cfg.brightness = val;
+    // Apply immediately to backlight
+    oms::Board::instance().setBacklight(val > 0);
+    // Save to SPIFFS
+    oms::config::save();
+    OMS_LOG("UI", "Brightness: %d", val);
+}
+
+static void timeout_cb(lv_event_t* e) {
+    if (!s_timeoutRoller) return;
+    uint16_t sel = lv_roller_get_selected(s_timeoutRoller);
+    const int timeouts[] = {10, 15, 30, 60, 120, 0};  // 0 = never
+    oms::Config mutable_cfg = oms::config::get();
+    mutable_cfg.screenTimeoutSec = timeouts[sel];
+    oms::config::save();
+    OMS_LOG("UI", "Screen timeout: %d s", timeouts[sel]);
+}
+
+static void sound_cb(lv_event_t* e) {
+    if (!s_soundSwitch) return;
+    bool on = lv_obj_has_state(s_soundSwitch, LV_STATE_CHECKED);
+    oms::Config mutable_cfg = oms::config::get();
+    mutable_cfg.notifySound = on;
+    oms::config::save();
+    OMS_LOG("UI", "Sound: %s", on ? "on" : "off");
+}
+
+void ScreenSettings::showDisplay() {
+    OMS_LOG("UI", "Settings: display");
+    lv_obj_t* list = create_sub_page("Display");
+
+    const auto& cfg = oms::config::get();
+
+    // ── Brightness ────────────────────────────────────────────────
+    lv_obj_t* label = lv_label_create(list);
+    lv_label_set_text(label, "Brightness:");
+    lv_obj_set_style_text_color(label, theme::TEXT, 0);
+
+    s_brightnessSlider = lv_slider_create(list);
+    lv_slider_set_range(s_brightnessSlider, 20, 255);
+    lv_slider_set_value(s_brightnessSlider, cfg.brightness, LV_ANIM_OFF);
+    lv_obj_set_width(s_brightnessSlider, OMS_SCREEN_W - 30);
+    lv_obj_add_event_cb(s_brightnessSlider, brightness_cb, LV_EVENT_VALUE_CHANGED, nullptr);
+
+    // ── Screen Timeout ───────────────────────────────────────────
+    label = lv_label_create(list);
+    lv_label_set_text(label, "Screen Timeout:");
+    lv_obj_set_style_text_color(label, theme::TEXT, 0);
+
+    s_timeoutRoller = lv_roller_create(list);
+    lv_roller_set_options(s_timeoutRoller,
+        "10s\n15s\n30s\n60s\n120s\nNever",
+        LV_ROLLER_MODE_NORMAL);
+    lv_roller_set_visible_row_count(s_timeoutRoller, 3);
+    lv_obj_set_width(s_timeoutRoller, OMS_SCREEN_W - 20);
+
+    // Set current selection
+    const int timeouts[] = {10, 15, 30, 60, 120, 0};
+    uint16_t sel = 0;
+    for (int i = 0; i < 6; i++) {
+        if (cfg.screenTimeoutSec == timeouts[i]) { sel = i; break; }
+    }
+    lv_roller_set_selected(s_timeoutRoller, sel, LV_ANIM_OFF);
+    lv_obj_add_event_cb(s_timeoutRoller, timeout_cb, LV_EVENT_VALUE_CHANGED, nullptr);
+
+    // ── Sound ─────────────────────────────────────────────────────
+    lv_obj_t* row = lv_obj_create(list);
+    lv_obj_set_size(row, OMS_SCREEN_W - 20, 30);
+    lv_obj_set_style_bg_color(row, theme::BG, 0);
+    lv_obj_set_style_border_width(row, 0, 0);
+    lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(row, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+
+    label = lv_label_create(row);
+    lv_label_set_text(label, "Sound on message:");
+    lv_obj_set_style_text_color(label, theme::TEXT, 0);
+    lv_obj_set_flex_grow(label, 1);
+
+    s_soundSwitch = lv_switch_create(row);
+    if (cfg.notifySound) {
+        lv_obj_add_state(s_soundSwitch, LV_STATE_CHECKED);
+    }
+    lv_obj_add_event_cb(s_soundSwitch, sound_cb, LV_EVENT_VALUE_CHANGED, nullptr);
+}
+
+// ── Export / Import ────────────────────────────────────────────────
 void ScreenSettings::showExportImport() {
     OMS_LOG("UI", "Settings: export/import");
     lv_obj_t* list = create_sub_page("Export / Import");
@@ -233,6 +413,7 @@ void ScreenSettings::showExportImport() {
     lv_obj_set_style_text_color(item, theme::TEXT_MUTED, 0);
 }
 
+// ── About ──────────────────────────────────────────────────────────
 void ScreenSettings::showAbout() {
     OMS_LOG("UI", "Settings: about");
     lv_obj_t* list = create_sub_page("About");
