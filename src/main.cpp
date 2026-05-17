@@ -58,4 +58,6 @@ void loop() {
     oms::ui::tick();
     // Drain mesh message inbox into UI
     oms::ui::ScreenHome::updateMessages();
+    // Update status bar (battery, RSSI) every ~5 seconds
+    oms::ui::ScreenHome::updateStatusBar();
 }
