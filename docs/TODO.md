@@ -4,7 +4,7 @@
 
 - [x] Verify all GPIO pin assignments against T-Deck schematic — done from docs, needs hardware validation
 - [x] Create TFT_eSPI `User_Setup.h` for T-Deck ST7789 config
-- [x] Test first compile: `pio run -e t-deck` — compiles clean (663KB)
+- [x] Test first compile: `pio run -e t-deck` — compiles clean (870KB)
 - [x] Fix all compile errors — all resolved
 - [x] ScreenMap, ScreenSettings, ScreenTerminal implemented
 - [ ] Flash to T-Deck, verify serial output appears
@@ -16,6 +16,7 @@
 - [x] Key event mapping to LVGL via indev bridge (`src/hardware/KeyboardInput.h/cpp`)
 - [x] Special keys: Enter, Esc, Tab, Backspace
 - [x] Modifier tracking: Shift, Ctrl, Alt, Sym
+- [x] Enter key sends message (LV_EVENT_READY on textarea)
 - [ ] Test all keys produce correct input
 
 ## Trackball
@@ -35,34 +36,35 @@
 ## MeshCore Integration
 
 - [x] Create `TDeckBoard` class implementing `mesh::MainBoard`
-  - `getBattMilliVolts()` — ADC on GPIO1
-  - `getMCUTemperature()` — ESP32 internal temp
-  - `reboot()` — ESP.restart()
-  - `getResetReason()` — esp_reset_reason()
+  - [x] `getBattMilliVolts()` — ADC on GPIO1
+  - [x] `getMCUTemperature()` — ESP32 internal temp
+  - [x] `reboot()` — ESP.restart()
+  - [x] `getResetReason()` — esp_reset_reason()
+  - [x] `getManufacturerName()` — return "LilyGo"
+  - [x] `getStartupReason()` — check RTC memory
 - [x] Create `TDeckClock` class implementing `mesh::RTCClock`
-  - GPS time sync
-  - NTP fallback
-  - millis() drift tracking
+  - [x] GPS time sync
+  - [x] NTP fallback
+  - [x] millis() drift tracking
 - [x] Wire TDeckBoard + TDeckClock into MeshService
-- [ ] Load identity (private key) from SPIFFS or generate new
-- [ ] Configure radio region (EU868 / US915 etc) from Config
-- [ ] Start MeshCore loop in MeshService::tick()
-- [ ] Wire MeshService::sendChannel/sendDirect through MeshCore
-- [ ] Wire hopCount/rssi from MeshCore state
-  - `getManufacturerName()` — return "LilyGo"
-  - `getStartupReason()` — check RTC memory
-- [ ] Create `TDeckClock` class implementing `mesh::RTCClock`
-  - `getCurrentTime()` — from GPS or manual set
-  - `setCurrentTime()` — set from BLE companion or GPS
-- [ ] Wire MeshCore radio init with SX1262 pin config
+- [x] Load identity from SPIFFS (generate on first boot)
+- [x] Configure radio region (EU868 / US915 etc) from Config
+- [x] Start MeshCore loop in MeshService::tick()
+- [x] Wire MeshService::sendChannel/sendDirect through MeshCore
+- [x] Wire mesh receive path to UI via MessageBus
+- [x] Wire hopCount/rssi from MeshCore state
+- [x] Wire MeshCore radio init with SX1262 pin config
 - [ ] Wire MeshCore serial interface (BLE companion)
-- [ ] Identity: generate key on first boot, store in SPIFFS
 - [ ] Test: can we see adverts from other nodes?
 
 ## UI
 
-- [ ] ScreenHome: wire send button to MeshService::sendChannel()
-- [ ] ScreenHome: wire incoming messages to bubble list
+- [x] ScreenHome: wire send button to MeshService::sendChannel()
+- [x] ScreenHome: wire incoming messages to bubble list (via MessageBus)
+- [x] ScreenHome: channel tabs (#Public, CH1, DM) with per-tab message buffers
+- [x] ScreenHome: battery voltage and RSSI status bar indicators
+- [x] ScreenHome: message timestamps (HH:MM)
+- [x] ScreenHome: Enter key on keyboard sends message
 - [ ] ScreenMap: create LVGL canvas for tile rendering
 - [ ] ScreenMap: implement touch/trackball pan
 - [ ] ScreenMap: implement zoom controls
@@ -98,7 +100,7 @@
 - [ ] Touch responsiveness tuning
 - [ ] Trackball debounce and acceleration
 - [ ] Sound feedback (buzzer) on message receive
-- [ ] Battery icon in status bar with live voltage
+- [x] Battery icon in status bar with live voltage
 - [x] OTA firmware update via SD card
 - [x] Release binary + checksums on GitHub
 - [x] Config export/import via SD card (ConfigExport.h/cpp)

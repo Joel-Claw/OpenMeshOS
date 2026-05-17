@@ -32,23 +32,26 @@ Current firmware version: **0.1.0-alpha.1** (first compile, not flashed to hardw
 
 Goal: Send and receive messages on the mesh.
 
-- [ ] MeshCore MainBoard implementation for T-Deck
+- [x] MeshCore MainBoard implementation for T-Deck
   - Battery voltage read (ADC on GPIO)
   - MCU temperature
   - Reboot/powerOff
-- [ ] MeshCore RTCClock implementation
+- [x] MeshCore RTCClock implementation
   - Sync from GPS (T-Deck Plus)
   - Sync from BLE companion app
   - Manual set via settings
-- [ ] MeshCore radio init (SX1262, region config)
-- [ ] Message send: channel messages via MeshCore
-- [ ] Message send: direct messages via MeshCore
-- [ ] Message receive: display incoming messages in chat UI
+- [x] MeshCore radio init (SX1262, region config)
+- [x] Identity: generate key on first boot, store in SPIFFS
+- [x] Message send: channel messages via MeshCore
+- [x] Message send: direct messages via MeshCore
+- [x] Message receive: display incoming messages in chat UI
 - [ ] Message ring buffer (PSRAM, 1000 messages max)
-- [ ] Keyboard input: BBQ10KB I2C driver
+- [x] Keyboard input: BBQ10KB I2C driver
   - Key events → LVGL textarea
   - Special keys (Enter = send, Esc = back)
-- [ ] Channel switching (trackball left/right on status bar)
+- [x] Channel switching (tab buttons on status bar)
+- [x] Battery/RSSI status bar indicators
+- [x] Per-tab message buffers (64 messages each)
 - [ ] BLE companion app connectivity
 - [x] Config import/export (MeshCore companion app format)
 - [x] Unit tests for coordinate math (MapEngine)
