@@ -68,7 +68,8 @@
 - [ ] ScreenMap: create LVGL canvas for tile rendering
 - [ ] ScreenMap: implement touch/trackball pan
 - [ ] ScreenMap: implement zoom controls
-- [ ] ScreenSettings: implement all config fields with live save
+- [x] ScreenSettings: implement all config fields with live save (callsign, region, brightness, timeout, sound)
+- [ ] ScreenSettings: implement OTA firmware update sub-page
 - [ ] ScreenTerminal: create MeshCore CLI passthrough
 - [ ] ScreenLock: implement with auto-dimming
 - [ ] Test: trackball navigation between all screens

@@ -11,6 +11,7 @@
 #include "mesh/MeshService.h"
 #include "ui/UIScreen.h"
 #include "ui/ScreenHome.h"
+#include "ui/ScreenLock.h"
 #include "utils/Log.h"
 #include "utils/Config.h"
 
@@ -56,8 +57,21 @@ void loop() {
     s_kbInput.update(oms::Board::instance().keyboard());
     oms::MeshService::instance().tick();
     oms::ui::tick();
+
+    // Reset idle timer on any keyboard activity
+    if (s_kbInput.hasEvents()) {
+        oms::ui::ScreenLock::resetIdleTimer();
+    }
+
     // Drain mesh message inbox into UI
     oms::ui::ScreenHome::updateMessages();
     // Update status bar (battery, RSSI) every ~5 seconds
     oms::ui::ScreenHome::updateStatusBar();
+
+    // Check idle timeout and lock screen if needed
+    oms::ui::ScreenLock::checkIdle();
+    // Update lock screen clock display
+    if (oms::ui::ScreenLock::isActive()) {
+        oms::ui::ScreenLock::update();
+    }
 }

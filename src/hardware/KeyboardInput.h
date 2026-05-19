@@ -25,6 +25,9 @@ public:
     // Get LVGL indev handle
     lv_indev_t *indev() const { return _kbIndev; }
 
+    // Check if there are pending key events (for idle timer reset)
+    bool hasEvents() const { return _keyBufLen > 0; }
+
     // Modifier state queries
     bool shiftHeld() const { return _shift; }
     bool ctrlHeld() const  { return _ctrl; }
