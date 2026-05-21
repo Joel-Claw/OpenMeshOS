@@ -8,6 +8,7 @@
 #include "version.h"
 #include "hardware/Board.h"
 #include "hardware/KeyboardInput.h"
+#include "hardware/Notification.h"
 #include "mesh/MeshService.h"
 #include "ui/UIScreen.h"
 #include "ui/ScreenHome.h"
@@ -39,6 +40,9 @@ void setup() {
     // 2) Initialise board-level hardware (display, keyboard, trackball, LoRa, GPS)
     oms::Board::instance().init();
 
+    // 2b) Initialise notification system (audio + screen wake)
+    oms::Notification::instance().init();
+
     // 3) Initialise MeshCore radio + protocol stack
     oms::MeshService::instance().init();
 
@@ -56,6 +60,7 @@ void loop() {
     oms::Board::instance().tick();
     s_kbInput.update(oms::Board::instance().keyboard());
     oms::MeshService::instance().tick();
+    oms::Notification::instance().tick();
     oms::ui::tick();
 
     // Reset idle timer on any keyboard activity

@@ -70,8 +70,8 @@
 - [ ] ScreenMap: implement zoom controls
 - [x] ScreenSettings: implement all config fields with live save (callsign, region, brightness, timeout, sound)
 - [ ] ScreenSettings: implement OTA firmware update sub-page
-- [ ] ScreenTerminal: create MeshCore CLI passthrough
-- [ ] ScreenLock: implement with auto-dimming
+- [ ] ScreenTerminal: MeshCore CLI passthrough (basic command interpreter done, full passthrough pending)
+- [x] ScreenLock: implement with auto-dimming
 - [ ] Test: trackball navigation between all screens
 
 ## Map
@@ -100,8 +100,10 @@
 - [ ] Font size audit (nothing below 10px)
 - [ ] Touch responsiveness tuning
 - [ ] Trackball debounce and acceleration
-- [ ] Sound feedback (buzzer) on message receive
+- [ ] Sound/buzzer notification on incoming message
+- [ ] Screen wake on incoming message
 - [x] Battery icon in status bar with live voltage
+- [x] Auto-dimming and screen lock on idle timeout
 - [x] OTA firmware update via SD card
 - [x] Release binary + checksums on GitHub
 - [x] Config export/import via SD card (ConfigExport.h/cpp)

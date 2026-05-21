@@ -16,6 +16,7 @@
 //
 // Channel tabs switch between #Public, Channel1, and DM views.
 // Status bar shows battery voltage and LoRa RSSI.
+// Message history is backed by the PSRAM MsgRingBuffer (1000 msgs).
 
 #include "ScreenHome.h"
 #include "ScreenMap.h"
@@ -24,6 +25,7 @@
 #include "Theme.h"
 #include "../mesh/MessageBus.h"
 #include "../mesh/MeshService.h"
+#include "../mesh/MsgRingBuffer.h"
 #include "../mesh/TDeckBoard.h"
 #include "../hardware/Board.h"
 #include "../utils/Log.h"
@@ -46,41 +48,18 @@ uint32_t  ScreenHome::_lastStatusUpdate = 0;
 static lv_obj_t* s_tabBtns[3] = {nullptr, nullptr, nullptr};
 static lv_obj_t* s_textarea = nullptr;
 
-// ── Per-tab message buffers ────────────────────────────────────────
-// Store messages per tab so they survive tab switches
-static constexpr size_t TAB_MSG_BUF_SIZE = 64;
-
-struct TabMsg {
-    char text[MSG_MAX_LEN + 24];
-    bool used;
-};
-
-static TabMsg s_publicMsgs[TAB_MSG_BUF_SIZE];
-static TabMsg s_ch1Msgs[TAB_MSG_BUF_SIZE];
-static TabMsg s_dmMsgs[TAB_MSG_BUF_SIZE];
-static size_t s_publicCount = 0;
-static size_t s_ch1Count = 0;
-static size_t s_dmCount = 0;
-
-static TabMsg* tabBuffer(ChatTab tab) {
+// ── Channel ID mapping ────────────────────────────────────────────
+// Converts ChatTab enum to channel_id for MsgRingBuffer queries
+// 0 = public, 1 = CH1, 255 = DM
+static uint8_t tabToChannelId(ChatTab tab) {
     switch (tab) {
-        case ChatTab::Public:   return s_publicMsgs;
-        case ChatTab::Channel1: return s_ch1Msgs;
-        case ChatTab::DM:       return s_dmMsgs;
-        default:                return s_publicMsgs;
+        case ChatTab::Public:   return 0;
+        case ChatTab::Channel1: return 1;
+        case ChatTab::DM:       return 255;
+        default:                return 0;
     }
 }
 
-static size_t& tabCount(ChatTab tab) {
-    switch (tab) {
-        case ChatTab::Public:   return s_publicCount;
-        case ChatTab::Channel1: return s_ch1Count;
-        case ChatTab::DM:       return s_dmCount;
-        default:                return s_publicCount;
-    }
-}
-
-static constexpr size_t TAB_MSG_MAX = TAB_MSG_BUF_SIZE;
 static const char* channelName(ChatTab tab) {
     switch (tab) {
         case ChatTab::Public:    return "#Public";
@@ -97,34 +76,8 @@ void ScreenHome::updateMessages() {
     bool newMsgs = false;
     InboxMessage msg;
     while (MessageBus::inbox().pop(msg)) {
-        // Determine which tab this message belongs to
-        ChatTab targetTab;
-        if (msg.kind == MsgKind::DirectMessage) {
-            targetTab = ChatTab::DM;
-        } else if (msg.kind == MsgKind::SystemInfo) {
-            targetTab = ChatTab::Public;  // system info goes to public
-        } else {
-            targetTab = ChatTab::Public;  // group channels go to public for now
-        }
-
-        // Store in per-tab buffer
-        TabMsg* buf = tabBuffer(targetTab);
-        size_t& count = tabCount(targetTab);
-        if (count < TAB_MSG_BUF_SIZE) {
-            // Format timestamp (HH:MM from millis)
-            uint32_t secs = msg.timestamp / 1000;
-            uint32_t mins = (secs / 60) % 60;
-            uint32_t hrs  = (secs / 3600) % 24;
-            char timeBuf[8];
-            snprintf(timeBuf, sizeof(timeBuf), "%02lu:%02lu", hrs, mins);
-
-            const char* prefix = (msg.kind == MsgKind::DirectMessage) ? "[DM]" : "[CH]";
-            snprintf(buf[count].text, sizeof(TabMsg::text), "%s %s %s: %s",
-                     timeBuf, prefix, msg.sender, msg.text);
-            buf[count].used = true;
-            count++;
-        }
-
+        // Push into PSRAM ring buffer
+        MsgRingBuffer::instance().push(msg);
         newMsgs = true;
     }
 
@@ -134,16 +87,16 @@ void ScreenHome::updateMessages() {
     }
 }
 
-// ── Refresh message list from tab buffer ────────────────────────────
+// ── Refresh message list from ring buffer ──────────────────────────
 void ScreenHome::refreshMessageList() {
     if (!_msgList) return;
 
     lv_obj_clean(_msgList);
 
-    TabMsg* buf = tabBuffer(_activeTab);
-    size_t count = tabCount(_activeTab);
+    uint8_t chId = tabToChannelId(_activeTab);
+    size_t msgCount = MsgRingBuffer::instance().countByChannel(chId);
 
-    if (count == 0) {
+    if (msgCount == 0) {
         const char* placeholder = (_activeTab == ChatTab::DM)
             ? "No direct messages yet."
             : "No messages on this channel.";
@@ -152,9 +105,14 @@ void ScreenHome::refreshMessageList() {
         return;
     }
 
-    for (size_t i = 0; i < count; i++) {
-        if (!buf[i].used) continue;
-        lv_obj_t* btn = lv_list_add_btn(_msgList, nullptr, buf[i].text);
+    // Query the most recent messages (show up to 64 in the list)
+    static constexpr size_t MAX_DISPLAY = 64;
+    const char* texts[MAX_DISPLAY];
+    size_t got = MsgRingBuffer::instance().queryByChannel(chId, 0, MAX_DISPLAY, texts, MAX_DISPLAY);
+
+    // Display oldest-first (ring buffer returns newest-first)
+    for (size_t i = got; i > 0; i--) {
+        lv_obj_t* btn = lv_list_add_btn(_msgList, nullptr, texts[i - 1]);
         lv_obj_set_style_text_color(btn, theme::TEXT, 0);
         lv_obj_set_style_bg_color(btn, theme::BG, 0);
     }
@@ -200,7 +158,7 @@ void ScreenHome::switchTab(ChatTab tab) {
         }
     }
 
-    // Refresh message list from the new tab's buffer
+    // Refresh message list from ring buffer for the new tab
     refreshMessageList();
 
     OMS_LOG("UI", "Switched to tab: %s", channelName(tab));
@@ -339,6 +297,12 @@ void ScreenHome::create() {
              "OpenMeshOS v%s\nReady to mesh.", OMS_VERSION_STRING);
     lv_obj_t* welcome = lv_list_add_btn(_msgList, nullptr, welcomeBuf);
     lv_obj_set_style_text_color(welcome, theme::TEXT_MUTED, 0);
+
+    // If ring buffer already has messages, display them
+    uint8_t chId = tabToChannelId(_activeTab);
+    if (MsgRingBuffer::instance().countByChannel(chId) > 0) {
+        refreshMessageList();
+    }
 
     // ── Input bar (bottom 36px) ──────────────────────────────────
     _inputBar = lv_obj_create(_screen);

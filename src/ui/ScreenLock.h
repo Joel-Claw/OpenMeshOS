@@ -22,6 +22,9 @@ public:
     /// Whether the lock screen is currently active.
     static bool isActive() { return _active; }
 
+    /// Whether the screen is currently dimmed (backlight reduced).
+    static bool isDimmed() { return _dimmed; }
+
     /// Called from main loop to update time and battery display.
     static void update();
 

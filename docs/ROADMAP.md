@@ -45,7 +45,7 @@ Goal: Send and receive messages on the mesh.
 - [x] Message send: channel messages via MeshCore
 - [x] Message send: direct messages via MeshCore
 - [x] Message receive: display incoming messages in chat UI
-- [ ] Message ring buffer (PSRAM, 1000 messages max)
+- [x] Message ring buffer (PSRAM, 1000 messages max)
 - [x] Keyboard input: BBQ10KB I2C driver
   - Key events → LVGL textarea
   - Special keys (Enter = send, Esc = back)
@@ -99,10 +99,10 @@ Goal: Full settings, terminal, and polish.
 - [ ] Notifications
   - Sound on incoming message (buzzer)
   - Screen wake on incoming message
-  - Auto-dimming after timeout
-- [ ] Lock screen
+- [x] Lock screen
   - Time, date, battery, node count
   - Press any key to unlock
+  - Auto-dimming after timeout
 - [ ] OTA firmware update (via SD card or BLE)
 
 ## Phase 4: Multi-Device (v0.5.0)

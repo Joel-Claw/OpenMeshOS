@@ -6,6 +6,7 @@
 
 #include "OpenMesh.h"
 #include "MessageBus.h"
+#include "../hardware/Notification.h"
 #include "../utils/Log.h"
 
 namespace oms {
@@ -38,6 +39,10 @@ void OpenMesh::onPeerDataRecv(mesh::Packet* packet, uint8_t type, int sender_idx
         msg.text[copyLen] = '\0';
         msg.timestamp = millis();
         MessageBus::inbox().push(msg);
+
+        // Notification: beep and wake screen
+        Notification::instance().playTone(NotifyTone::MessageIn);
+        Notification::instance().wakeScreen();
     }
 }
 
@@ -61,6 +66,10 @@ void OpenMesh::onGroupDataRecv(mesh::Packet* packet, uint8_t type,
             msg.text[msgCopyLen] = '\0';
             msg.timestamp = millis();
             MessageBus::inbox().push(msg);
+
+                       // Notification: beep and wake screen
+            Notification::instance().playTone(NotifyTone::MessageIn);
+            Notification::instance().wakeScreen();
         }
     }
 }
