@@ -52,9 +52,10 @@ Goal: Send and receive messages on the mesh.
 - [x] Channel switching (tab buttons on status bar)
 - [x] Battery/RSSI status bar indicators
 - [x] Per-tab message buffers (64 messages each)
-- [ ] BLE companion app connectivity
+- [x] BLE companion app connectivity
 - [x] Config import/export (MeshCore companion app format)
 - [x] Unit tests for coordinate math (MapEngine)
+- [x] Unit tests for Config save/load round-trip (SPIFFS)
 
 ## Phase 2: Map (v0.3.0)
 
@@ -62,14 +63,14 @@ Goal: Offline GPS map with node positions.
 
 - [ ] GPS serial driver (T-Deck Plus built-in GPS)
 - [ ] TinyGPSPlus integration
-- [ ] SD card initialization and tile directory scan
-- [ ] PNG tile decoder (lodepng or LVGL PNG decoder)
-- [ ] Tile rendering to LVGL canvas
-- [ ] Pan (trackball left/right/up/down)
-- [ ] Zoom (trackball center press → zoom menu, or +/- buttons)
-- [ ] Node marker overlay (self, contacts, repeaters)
-- [ ] Node tap/select → info popup
-- [ ] Tile caching in PSRAM (LRU, 8 tiles)
+- [x] SD card initialization and tile directory scan
+- [x] PNG tile decoder (lodepng)
+- [x] Tile rendering to LVGL canvas (TileRenderer)
+- [x] Pan (trackball left/right/up/down)
+- [x] Zoom (trackball center press → zoom menu, or +/- buttons)
+- [ ] Node marker overlay (self, contacts, repeaters) — drawNodes() implemented, needs tap-to-select
+- [x] Node tap/select → info popup
+- [x] Tile caching in PSRAM (LRU, 9 tiles)
 - [ ] Progressive tile loading (center first, edges after)
 - [x] Tile download helper script (`scripts/download_tiles.py`)
 - [x] Map screen accessible from home screen navigation
@@ -78,16 +79,16 @@ Goal: Offline GPS map with node positions.
 
 Goal: Full settings, terminal, and polish.
 
-- [ ] Settings screen implementation
-  - Radio region selector (EU868, US915, AU915, etc.)
-  - Channel selector
-  - TX power slider
-  - Callsign editor
-  - Brightness slider
-  - Screen timeout selector
-  - Sound toggle
-  - Theme toggle (dark/light)
-  - BLE toggle
+- [x] Settings screen implementation
+  - [x] Radio region selector (EU868, US915, AU915, etc.)
+  - [x] Channel selector
+  - [ ] TX power slider
+  - [x] Callsign editor
+  - [x] Brightness slider
+  - [x] Screen timeout selector
+  - [x] Sound toggle
+  - [ ] Theme toggle (dark/light)
+  - [x] BLE toggle
 - [ ] Repeater scanner
   - Discover repeaters on the mesh
   - Show signal strength, distance, uptime
@@ -96,14 +97,15 @@ Goal: Full settings, terminal, and polish.
   - Full MeshCore CLI
   - Command history (up/down arrows)
   - Multi-colour output (errors red, warnings orange, data green)
-- [ ] Notifications
-  - Sound on incoming message (buzzer)
-  - Screen wake on incoming message
+- [x] Notifications
+  - [x] Sound on incoming message (buzzer)
+  - [x] Screen wake on incoming message
 - [x] Lock screen
   - Time, date, battery, node count
   - Press any key to unlock
   - Auto-dimming after timeout
-- [ ] OTA firmware update (via SD card or BLE)
+- [x] OTA firmware update (via SD card)
+- [ ] OTA firmware update (via BLE)
 
 ## Phase 4: Multi-Device (v0.5.0)
 

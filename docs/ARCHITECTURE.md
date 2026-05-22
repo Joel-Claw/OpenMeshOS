@@ -18,7 +18,7 @@ LVGL and the Arduino framework provide. One `loop()`, one thread of execution.
 │             │  │                │  │                    │
 │ Display     │  │ MeshCore lib   │  │ ScreenHome        │
 │ Keyboard    │  │ (submodule)    │  │ ScreenMap         │
-│ Trackball   │  │                │  │ ScreenSettings     │
+│ Trackball   │  │ BLECompanion   │  │ ScreenSettings     │
 │ GPS         │  │ Radio config   │  │ ScreenTerminal     │
 │ LoRa radio  │  │ Identity/keys   │  │ ScreenLock        │
 │ Battery ADC │  │ Message queue   │  │                    │
@@ -53,11 +53,13 @@ LVGL and the Arduino framework provide. One `loop()`, one thread of execution.
 ┌──────────┬──────────────┐
 │ 0        │ LVGL buffers │  ~600KB (2x 320*40 lines)
 ├──────────┼──────────────┤
-│ ~600KB   │ Map tile cache│  ~8 tiles × 16KB = 128KB
+│ ~600KB   │ Map tile cache│  ~9 tiles × 128KB = ~1.1MB (RGB565)
 ├──────────┼──────────────┤
-│ ~728KB+  │ Message buffer│  ~100KB
+│ ~1.7MB   │ MsgRingBuffer │  ~340KB (1000 msgs in PSRAM)
 ├──────────┼──────────────┤
-│ ~828KB+  │ Free heap     │  ~7.2MB
+│ ~2.1MB+  │ PNG decode buf│  ~262KB (RGBA temp buffer)
+├──────────┼──────────────┤
+│ ~2.4MB+  │ Free heap     │  ~5.6MB
 └──────────┴──────────────┘
 ```
 
@@ -80,6 +82,9 @@ MeshService::tick()
     ├── Decrypt (MeshCore handles)
     ├── Determine type (channel msg / DM / advert)
     ├── Store in message buffer (PSRAM ring)
+    ├── Push to BLECompanion (if phone connected)
+    ├── Play notification sound
+    ├── Wake screen from dim/lock
     └── Signal UI → lv_obj_add_event (new message)
          │
          ▼
@@ -115,11 +120,12 @@ ScreenMap::tick()
     │
     ├── Reads Board::instance().gpsLat/gpsLng
     ├── MapEngine::setCenter(lat, lng)
-    ├── MapEngine::renderFrame()
+    ├── TileRenderer::renderFrame(canvas, lat, lng, zoom)
     │     ├── Calculates visible tile grid
-    │     ├── Loads PNG from SD card if not cached
-    │     ├── Draws tiles to LVGL canvas
-    │     └── Overlays node positions
+    │     ├── Loads PNG from SD card (lodepng decode)
+    │     ├── Caches decoded tiles in PSRAM (LRU, 9 slots)
+    │     ├── Blits RGB565 tiles to LVGL canvas
+    │     └── Overlays node positions (markers)
     └── LVGL flushes to display
 ```
 

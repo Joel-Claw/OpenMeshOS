@@ -26,8 +26,10 @@
 #include "../mesh/MessageBus.h"
 #include "../mesh/MeshService.h"
 #include "../mesh/MsgRingBuffer.h"
+#include "../mesh/BLECompanion.h"
 #include "../mesh/TDeckBoard.h"
 #include "../hardware/Board.h"
+#include "../hardware/Notification.h"
 #include "../utils/Log.h"
 #include "../version.h"
 
@@ -78,6 +80,11 @@ void ScreenHome::updateMessages() {
     while (MessageBus::inbox().pop(msg)) {
         // Push into PSRAM ring buffer
         MsgRingBuffer::instance().push(msg);
+        // Push to BLE companion (if phone is connected)
+        BLECompanion::instance().notifyMessage(msg);
+        // Play notification sound and wake screen
+        Notification::instance().playTone(NotifyTone::MessageIn);
+        Notification::instance().wakeScreen();
         newMsgs = true;
     }
 

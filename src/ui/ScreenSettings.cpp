@@ -23,12 +23,15 @@
 #include "ScreenHome.h"
 #include "Theme.h"
 #include "../mesh/MeshService.h"
+#include "../mesh/BLECompanion.h"
 #include "../mesh/TDeckBoard.h"
 #include "../hardware/Board.h"
 #include "../utils/Config.h"
 #include "../utils/ConfigExport.h"
 #include "../utils/Log.h"
 #include "../version.h"
+#include <Update.h>
+#include <SD.h>
 
 namespace oms { namespace ui {
 
@@ -60,6 +63,10 @@ static void export_import_cb(lv_event_t* e) {
 
 static void about_cb(lv_event_t* e) {
     ScreenSettings::showAbout();
+}
+
+static void ota_cb(lv_event_t* e) {
+    ScreenSettings::showOTAUpdate();
 }
 
 void ScreenSettings::create() {
@@ -126,6 +133,10 @@ void ScreenSettings::create() {
     item = lv_list_add_btn(_menuList, LV_SYMBOL_BELL, "About");
     lv_obj_set_style_text_color(item, theme::TEXT, 0);
     lv_obj_add_event_cb(item, about_cb, LV_EVENT_CLICKED, nullptr);
+
+    item = lv_list_add_btn(_menuList, LV_SYMBOL_UPLOAD, "OTA Update");
+    lv_obj_set_style_text_color(item, theme::TEXT, 0);
+    lv_obj_add_event_cb(item, ota_cb, LV_EVENT_CLICKED, nullptr);
 
     // ── Version label (bottom) ────────────────────────────────────────
     _versionLabel = lv_label_create(_screen);
@@ -392,6 +403,30 @@ void ScreenSettings::showDisplay() {
         lv_obj_add_state(s_soundSwitch, LV_STATE_CHECKED);
     }
     lv_obj_add_event_cb(s_soundSwitch, sound_cb, LV_EVENT_VALUE_CHANGED, nullptr);
+
+    // ── BLE Companion ─────────────────────────────────────────────
+    lv_obj_t* ble_row = lv_obj_create(list);
+    lv_obj_set_size(ble_row, OMS_SCREEN_W - 20, 30);
+    lv_obj_set_style_bg_color(ble_row, theme::BG, 0);
+    lv_obj_set_style_border_width(ble_row, 0, 0);
+    lv_obj_set_flex_flow(ble_row, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(ble_row, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+
+    label = lv_label_create(ble_row);
+    lv_label_set_text(label, "BLE companion:");
+    lv_obj_set_style_text_color(label, theme::TEXT, 0);
+    lv_obj_set_flex_grow(label, 1);
+
+    static lv_obj_t* s_bleSwitch = nullptr;
+    s_bleSwitch = lv_switch_create(ble_row);
+    if (BLECompanion::instance().enabled()) {
+        lv_obj_add_state(s_bleSwitch, LV_STATE_CHECKED);
+    }
+    lv_obj_add_event_cb(s_bleSwitch, [](lv_event_t* e) {
+        bool on = lv_obj_has_state(s_bleSwitch, LV_STATE_CHECKED);
+        BLECompanion::instance().setEnabled(on);
+        OMS_LOG("UI", "BLE: %s", on ? "on" : "off");
+    }, LV_EVENT_VALUE_CHANGED, nullptr);
 }
 
 // ── Export / Import ────────────────────────────────────────────────
@@ -434,6 +469,121 @@ void ScreenSettings::showAbout() {
 
     item = lv_list_add_btn(list, nullptr, "github.com/Joel-Claw/");
     lv_obj_set_style_text_color(item, theme::ACCENT, 0);
+}
+
+// ── OTA Firmware Update ──────────────────────────────────────────────
+
+static lv_obj_t* s_otaStatusLabel = nullptr;
+static lv_obj_t* s_otaProgress = nullptr;
+static bool s_otaInProgress = false;
+
+static void ota_start_sd_cb(lv_event_t* e) {
+    if (s_otaInProgress) return;
+
+    // Check SD card
+    if (!SD.begin(42)) {  // SD_CS_PIN
+        if (s_otaStatusLabel)
+            lv_label_set_text(s_otaStatusLabel, "No SD card!");
+        return;
+    }
+
+    const char* firmwarePath = "/oms/firmware.bin";
+    if (!SD.exists(firmwarePath)) {
+        if (s_otaStatusLabel)
+            lv_label_set_text(s_otaStatusLabel, "No /oms/firmware.bin");
+        return;
+    }
+
+    s_otaInProgress = true;
+    if (s_otaStatusLabel)
+        lv_label_set_text(s_otaStatusLabel, "Reading firmware.bin...");
+
+    File f = SD.open(firmwarePath, FILE_READ);
+    if (!f) {
+        if (s_otaStatusLabel)
+            lv_label_set_text(s_otaStatusLabel, "Failed to open file");
+        s_otaInProgress = false;
+        return;
+    }
+
+    size_t fileSize = f.size();
+    if (fileSize == 0 || fileSize > 6400000) {
+        if (s_otaStatusLabel)
+            lv_label_set_text(s_otaStatusLabel, "Invalid firmware size");
+        f.close();
+        s_otaInProgress = false;
+        return;
+    }
+
+    if (!Update.begin(fileSize)) {
+        if (s_otaStatusLabel)
+            lv_label_set_text(s_otaStatusLabel, "Not enough OTA space");
+        f.close();
+        s_otaInProgress = false;
+        return;
+    }
+
+    if (s_otaStatusLabel)
+        lv_label_set_text(s_otaStatusLabel, "Flashing...");
+
+    size_t written = Update.writeStream(f);
+    f.close();
+
+    if (written == fileSize && Update.end(true)) {
+        if (s_otaStatusLabel)
+            lv_label_set_text(s_otaStatusLabel, "Success! Rebooting...");
+        delay(2000);
+        ESP.restart();
+    } else {
+        char errBuf[48];
+        snprintf(errBuf, sizeof(errBuf), "Failed: %s", Update.getError() == UPDATE_ERROR_OK ? "size mismatch" : "write error");
+        if (s_otaStatusLabel)
+            lv_label_set_text(s_otaStatusLabel, errBuf);
+        s_otaInProgress = false;
+    }
+}
+
+static void ota_start_ble_cb(lv_event_t* e) {
+    if (s_otaStatusLabel)
+        lv_label_set_text(s_otaStatusLabel, "BLE OTA: not yet supported");
+}
+
+void ScreenSettings::showOTAUpdate() {
+    OMS_LOG("UI", "Settings: OTA update");
+    lv_obj_t* list = create_sub_page("OTA Update");
+
+    lv_obj_t* item;
+
+    // Current version
+    char buf[48];
+    snprintf(buf, sizeof(buf), "Current: " OMS_VERSION_STRING);
+    item = lv_list_add_btn(list, nullptr, buf);
+    lv_obj_set_style_text_color(item, theme::TEXT_MUTED, 0);
+
+    // Update from SD card
+    item = lv_list_add_btn(list, LV_SYMBOL_SD_CARD, "Update from SD");
+    lv_obj_set_style_text_color(item, theme::GREEN, 0);
+    lv_obj_add_event_cb(item, ota_start_sd_cb, LV_EVENT_CLICKED, nullptr);
+
+    // Update via BLE (future)
+    item = lv_list_add_btn(list, LV_SYMBOL_BLUETOOTH, "Update via BLE");
+    lv_obj_set_style_text_color(item, theme::TEXT_MUTED, 0);
+    lv_obj_add_event_cb(item, ota_start_ble_cb, LV_EVENT_CLICKED, nullptr);
+
+    // Status label
+    s_otaStatusLabel = lv_label_create(list);
+    lv_label_set_text(s_otaStatusLabel, "Place /oms/firmware.bin on SD");
+    lv_obj_set_style_text_color(s_otaStatusLabel, theme::TEXT, 0);
+    lv_obj_set_style_text_font(s_otaStatusLabel, &lv_font_montserrat_10, 0);
+
+    // Progress bar
+    s_otaProgress = lv_bar_create(list);
+    lv_obj_set_width(s_otaProgress, OMS_SCREEN_W - 30);
+    lv_obj_set_height(s_otaProgress, 10);
+
+    // Warning
+    item = lv_list_add_btn(list, LV_SYMBOL_WARNING, "Do not power off during update!");
+    lv_obj_set_style_text_color(item, theme::ORANGE, 0);
 }
 
 }}  // namespace oms::ui

@@ -22,7 +22,7 @@
 ## Trackball
 
 - [x] Detect I2C trackball variant (AFBR S10) vs GPIO variant
-- [ ] Implement I2C trackball polling for affected models
+- [x] Implement I2C trackball polling for affected models
 - [ ] Trackball down not working on some T-Deck models (I2C variant)
 - [ ] Test trackball on both hardware revisions
 
@@ -54,7 +54,7 @@
 - [x] Wire mesh receive path to UI via MessageBus
 - [x] Wire hopCount/rssi from MeshCore state
 - [x] Wire MeshCore radio init with SX1262 pin config
-- [ ] Wire MeshCore serial interface (BLE companion)
+- [x] Wire MeshCore serial interface (BLE companion)
 - [ ] Test: can we see adverts from other nodes?
 
 ## UI
@@ -65,31 +65,37 @@
 - [x] ScreenHome: battery voltage and RSSI status bar indicators
 - [x] ScreenHome: message timestamps (HH:MM)
 - [x] ScreenHome: Enter key on keyboard sends message
-- [ ] ScreenMap: create LVGL canvas for tile rendering
-- [ ] ScreenMap: implement touch/trackball pan
-- [ ] ScreenMap: implement zoom controls
+- [x] ScreenHome: notification sound + screen wake on incoming message
+- [x] ScreenHome: push messages to BLE companion on receive
+- [x] ScreenMap: create LVGL canvas for tile rendering
+- [x] ScreenMap: TileRenderer with PNG decode (lodepng), SD card, PSRAM LRU cache
+- [x] ScreenMap: implement touch/trackball pan
+- [x] ScreenMap: implement zoom controls
+- [ ] ScreenMap: node markers rendering via TileRenderer::drawNodes
+- [ ] ScreenMap: node info popup on tap
 - [x] ScreenSettings: implement all config fields with live save (callsign, region, brightness, timeout, sound)
-- [ ] ScreenSettings: implement OTA firmware update sub-page
+- [x] ScreenSettings: BLE companion toggle
+- [x] ScreenSettings: implement OTA firmware update sub-page
 - [ ] ScreenTerminal: MeshCore CLI passthrough (basic command interpreter done, full passthrough pending)
 - [x] ScreenLock: implement with auto-dimming
 - [ ] Test: trackball navigation between all screens
 
 ## Map
 
-- [ ] Integrate PNG decoder (lodepng or lvgl_png)
-- [ ] SD card init and tile directory scan on boot
-- [ ] Render first tile to screen (even one tile = milestone)
-- [ ] Pan with trackball
-- [ ] Zoom in/out
-- [ ] Node markers
-- [ ] Node info popup on tap
-- [ ] PSRAM tile cache (LRU eviction)
-- [ ] Write `scripts/download_tiles.py`
+- [x] Integrate PNG decoder (lodepng)
+- [x] SD card init and tile directory scan on boot
+- [x] Render tiles to LVGL canvas (TileRenderer)
+- [x] Pan with trackball (wire trackball events to MapEngine::pan)
+- [x] Zoom in/out (wire trackball/buttons to MapEngine::zoomIn/zoomOut)
+- [x] Node markers (TileRenderer::drawNodes wired in ScreenMap::refresh)
+- [x] Node info popup on tap
+- [x] PSRAM tile cache (LRU eviction)
+- [x] Write `scripts/download_tiles.py`
 
 ## Testing
 
 - [x] Unit test: MapEngine coordinate conversion (lat/lng to/from tile) — 34 tests passing
-- [x] Unit test: Config save/load round-trip
+- [x] Unit test: Config save/load round-trip (SPIFFS mock)
 - [ ] Integration test: SPIFFS read/write under load
 - [ ] Hardware test: keyboard scan produces expected keycodes
 - [ ] Hardware test: GPS NMEA sentences decode correctly
@@ -100,8 +106,8 @@
 - [ ] Font size audit (nothing below 10px)
 - [ ] Touch responsiveness tuning
 - [ ] Trackball debounce and acceleration
-- [ ] Sound/buzzer notification on incoming message
-- [ ] Screen wake on incoming message
+- [x] Sound/buzzer notification on incoming message
+- [x] Screen wake on incoming message
 - [x] Battery icon in status bar with live voltage
 - [x] Auto-dimming and screen lock on idle timeout
 - [x] OTA firmware update via SD card

@@ -7,6 +7,7 @@
 //   /map/{z}/{x}/{y}.png
 
 #include "MapEngine.h"
+#include "TileRenderer.h"
 #include "../utils/Log.h"
 #include <SD.h>
 #include <math.h>
@@ -41,17 +42,8 @@ void MapEngine::tileToLatLng(int tx, int ty, int z, float& lat, float& lng) {
 void MapEngine::init() {
     OMS_LOG("Map", "Initialising map engine");
 
-    // Try SD card
-    if (SD.begin(SD_CS_PIN)) {
-        if (SD.exists("/map")) {
-            _sdPresent = true;
-            OMS_LOG("Map", "SD card with /map/ directory found");
-        } else {
-            OMS_LOG("Map", "SD card present but no /map/ directory");
-        }
-    } else {
-        OMS_LOG("Map", "No SD card — map tiles unavailable");
-    }
+    // Initialise tile renderer (handles SD card and cache)
+    _sdPresent = _renderer.init();
 }
 
 void MapEngine::tick() {
@@ -106,11 +98,9 @@ bool MapEngine::tileExists(int z, int x, int y) const {
 
 // ── Rendering ────────────────────────────────────────────────────────
 bool MapEngine::renderFrame() {
-    // TODO: implement tile blitting to LVGL canvas
-    // 1. Calculate which tiles are visible at current center/zoom
-    // 2. Load PNG tiles from SD card (or use cached LVGL images)
-    // 3. Draw nodes as circles on top of the tile layer
-    // 4. Return true if any tile was loaded this frame
+    // Stub — actual rendering is done by ScreenMap using TileRenderer
+    // This method is kept for compatibility but the real work happens
+    // when ScreenMap calls _renderer.renderFrame() directly.
     return false;
 }
 

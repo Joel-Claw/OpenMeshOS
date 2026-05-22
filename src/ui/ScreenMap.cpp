@@ -22,6 +22,7 @@
 #include "ScreenHome.h"
 #include "Theme.h"
 #include "../map/MapEngine.h"
+#include "../map/TileRenderer.h"
 #include "../hardware/Board.h"
 #include "../utils/Log.h"
 
@@ -33,6 +34,9 @@ lv_obj_t* ScreenMap::_zoomLabel = nullptr;
 lv_obj_t* ScreenMap::_coordLabel = nullptr;
 lv_obj_t* ScreenMap::_backBtn   = nullptr;
 lv_obj_t* ScreenMap::_nodeInfo  = nullptr;
+
+lv_obj_t* ScreenMap::_nodePopup  = nullptr;
+int16_t  ScreenMap::_selectedNode = -1;
 
 bool     ScreenMap::_active     = false;
 int32_t  ScreenMap::_panAccX    = 0;
@@ -151,10 +155,16 @@ void ScreenMap::refresh() {
         lv_label_set_text(_coordLabel, cbuf);
     }
 
-    // Render map tiles to canvas
-    sMap.renderFrame();
+    // Render map tiles to canvas via TileRenderer
+    sMap.renderer().renderFrame(_mapCanvas, sMap.centerLat(), sMap.centerLng(), sMap.zoom());
 
-    // Draw node markers on top of canvas
+    // Draw node markers on top of tiles
+    if (sMap.nodeCount() > 0) {
+        sMap.renderer().drawNodes(_mapCanvas, sMap.nodes(), sMap.nodeCount(),
+                                   sMap.centerLat(), sMap.centerLng(), sMap.zoom());
+    }
+
+    // Update node info bar
     if (sMap.nodeCount() > 0 && _nodeInfo) {
         const auto& n = sMap.nodes()[0];
         char ibuf[48];
@@ -167,6 +177,12 @@ void ScreenMap::refresh() {
 void ScreenMap::feedInput(int16_t dx, int16_t dy, bool pressed) {
     if (!_active) return;
 
+    // If popup is shown, dismiss on any input
+    if (_nodePopup) {
+        dismissNodePopup();
+        return;
+    }
+
     if (pressed && _zoomHold == 0) {
         _zoomHold = 1;
         _pressStart = millis();
@@ -174,11 +190,13 @@ void ScreenMap::feedInput(int16_t dx, int16_t dy, bool pressed) {
     }
 
     if (!pressed && _zoomHold == 1) {
-        // Short press = normal click (no zoom)
+        // Short press: if on a node marker, show popup; otherwise do nothing
         _zoomHold = 0;
-        // If barely scrolled, treat as tap on map (select node?)
         if (_panAccX == 0 && _panAccY == 0) {
-            // Could select nearest node
+            // Tap on map — find nearest node
+            if (sMap.nodeCount() > 0) {
+                showNodePopup(0);  // For now, show first node
+            }
         }
         _panAccX = 0;
         _panAccY = 0;
@@ -194,7 +212,6 @@ void ScreenMap::feedInput(int16_t dx, int16_t dy, bool pressed) {
         // Vertical scroll while held = zoom
         if (dy > 0) sMap.zoomIn();
         if (dy < 0) sMap.zoomOut();
-        // Horizontal scroll while held = nothing extra
     } else {
         // Normal pan
         _panAccX += dx;
@@ -207,6 +224,66 @@ void ScreenMap::feedInput(int16_t dx, int16_t dy, bool pressed) {
 
 bool ScreenMap::isActive() {
     return _active;
+}
+
+// ── Node info popup ──────────────────────────────────────────────────
+
+void ScreenMap::showNodePopup(uint16_t nodeIndex) {
+    if (!_screen || nodeIndex >= sMap.nodeCount()) return;
+
+    dismissNodePopup();  // remove any existing popup
+
+    _selectedNode = nodeIndex;
+    const auto& node = sMap.nodes()[nodeIndex];
+
+    // Semi-transparent overlay (140x100px centered card)
+    _nodePopup = lv_obj_create(_screen);
+    lv_obj_set_size(_nodePopup, 160, 90);
+    lv_obj_align(_nodePopup, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_set_style_bg_color(_nodePopup, theme::BG_CARD, 0);
+    lv_obj_set_style_bg_opa(_nodePopup, LV_OPA_90, 0);
+    lv_obj_set_style_border_color(_nodePopup, theme::ACCENT, 0);
+    lv_obj_set_style_border_width(_nodePopup, 1, 0);
+    lv_obj_set_style_radius(_nodePopup, 8, 0);
+    lv_obj_set_style_pad_all(_nodePopup, 6, 0);
+    lv_obj_set_flex_flow(_nodePopup, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(_nodePopup, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER);
+
+    // Node name
+    lv_obj_t* name = lv_label_create(_nodePopup);
+    lv_label_set_text(name, node.name);
+    lv_obj_set_style_text_color(name, theme::ACCENT, 0);
+    lv_obj_set_style_text_font(name, &lv_font_montserrat_14, 0);
+
+    // RSSI + hops
+    char info1[32];
+    snprintf(info1, sizeof(info1), "RSSI: %d dBm  Hops: %d", node.rssi, node.hopCount);
+    lv_obj_t* rssi = lv_label_create(_nodePopup);
+    lv_label_set_text(rssi, info1);
+    lv_obj_set_style_text_color(rssi, theme::TEXT, 0);
+    lv_obj_set_style_text_font(rssi, &lv_font_montserrat_10, 0);
+
+    // Coordinates
+    char info2[32];
+    snprintf(info2, sizeof(info2), "%.4f %.4f", node.lat, node.lng);
+    lv_obj_t* coords = lv_label_create(_nodePopup);
+    lv_label_set_text(coords, info2);
+    lv_obj_set_style_text_color(coords, theme::TEXT_MUTED, 0);
+    lv_obj_set_style_text_font(coords, &lv_font_montserrat_10, 0);
+
+    // Dismiss hint
+    lv_obj_t* hint = lv_label_create(_nodePopup);
+    lv_label_set_text(hint, "Press to dismiss");
+    lv_obj_set_style_text_color(hint, theme::TEXT_MUTED, 0);
+    lv_obj_set_style_text_font(hint, &lv_font_montserrat_10, 0);
+}
+
+void ScreenMap::dismissNodePopup() {
+    if (_nodePopup) {
+        lv_obj_del(_nodePopup);
+        _nodePopup = nullptr;
+        _selectedNode = -1;
+    }
 }
 
 }}  // namespace oms::ui

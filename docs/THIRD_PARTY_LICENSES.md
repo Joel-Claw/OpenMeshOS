@@ -60,6 +60,13 @@ OpenMeshOS itself is released under the WTFPL (Do What The Fuck You Want To Publ
 - **Copyright**: Rhys Weatherley
 - **Use**: Cryptographic primitives (Ed25519, AES, etc., dependency of MeshCore)
 
+### lodepng
+
+- **Source**: https://github.com/lvandeve/lodepng
+- **License**: zlib/libpng license (permissive)
+- **Copyright**: Lode Vandevenne
+- **Use**: PNG image decoder for map tile rendering
+
 ### ArduinoJson
 
 - **Source**: https://github.com/benoitblanchon/ArduinoJson
@@ -122,6 +129,7 @@ Various fonts bundled with TFT_eSPI under the FreeBSD license. See `TFT_eSPI/Fon
 | RTClib | MIT | No |
 | Melopero RV3028 | MIT | No |
 | Crypto | Unlicense | No |
+| lodepng | zlib | No |
 | ArduinoJson | MIT | No |
 | CayenneLPP | MIT | No |
 | ESP32 Arduino Core | LGPL-2.1 | Yes (LGPL) |

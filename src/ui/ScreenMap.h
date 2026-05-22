@@ -24,6 +24,10 @@ public:
     // Trackball input while on map screen
     static void feedInput(int16_t dx, int16_t dy, bool pressed);
 
+    // Show popup for a specific node
+    static void showNodePopup(uint16_t nodeIndex);
+    static void dismissNodePopup();
+
     // Whether this screen is currently displayed
     static bool isActive();
 
@@ -34,6 +38,8 @@ private:
     static lv_obj_t* _coordLabel;
     static lv_obj_t* _backBtn;
     static lv_obj_t* _nodeInfo;
+    static lv_obj_t* _nodePopup;  // info overlay for selected node
+    static int16_t  _selectedNode; // index of currently selected node (-1 = none)
 
     static bool _active;
     static int32_t _panAccX;  // accumulated pan pixels

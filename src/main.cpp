@@ -10,8 +10,10 @@
 #include "hardware/KeyboardInput.h"
 #include "hardware/Notification.h"
 #include "mesh/MeshService.h"
+#include "mesh/BLECompanion.h"
 #include "ui/UIScreen.h"
 #include "ui/ScreenHome.h"
+#include "ui/ScreenMap.h"
 #include "ui/ScreenLock.h"
 #include "utils/Log.h"
 #include "utils/Config.h"
@@ -46,6 +48,9 @@ void setup() {
     // 3) Initialise MeshCore radio + protocol stack
     oms::MeshService::instance().init();
 
+    // 3b) Initialise BLE companion service (after mesh is ready)
+    oms::BLECompanion::instance().init();
+
     // 4) Initialise UI (LVGL + screen driver)
     oms::ui::init();
 
@@ -59,7 +64,22 @@ void setup() {
 void loop() {
     oms::Board::instance().tick();
     s_kbInput.update(oms::Board::instance().keyboard());
+
+    // Feed trackball input to active screen
+    {
+        int16_t tbDx = 0, tbDy = 0;
+        oms::Board::instance().trackball().consumeDelta(tbDx, tbDy);
+        bool tbPress = oms::Board::instance().trackball().consumePress();
+        if (oms::ui::ScreenMap::isActive()) {
+            oms::ui::ScreenMap::feedInput(tbDx, tbDy, tbPress);
+        }
+        if (tbDx != 0 || tbDy != 0 || tbPress) {
+            oms::ui::ScreenLock::resetIdleTimer();
+        }
+    }
+
     oms::MeshService::instance().tick();
+    oms::BLECompanion::instance().tick();
     oms::Notification::instance().tick();
     oms::ui::tick();
 

@@ -56,6 +56,10 @@ public:
     float centerLat() const { return _centerLat; }
     float centerLng() const { return _centerLng; }
 
+    // Tile renderer access
+    TileRenderer& renderer() { return _renderer; }
+    const TileRenderer& renderer() const { return _renderer; }
+
 private:
     float  _centerLat = 49.6117f;   // Luxembourg :)
     float  _centerLng = 6.1300f;
@@ -63,6 +67,7 @@ private:
     MapNode _nodes[64];
     uint16_t _nodeCount = 0;
     bool   _sdPresent = false;
+    TileRenderer _renderer;
 };
 
 }  // namespace oms
