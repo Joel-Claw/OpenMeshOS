@@ -130,7 +130,7 @@ Goal: Production-ready firmware.
 - [ ] Power optimization (sleep modes, LoRa TX burst timing)
 - [ ] Memory audit (no fragmentation after 72h runtime)
 - [ ] Long-duration stress test (48h continuous operation)
-- [ ] SD card corruption prevention (proper unmount, wear leveling)
+- [x] SD card corruption prevention (SDCard manager with safe mount/unmount)
 - [x] SPIFFS wear minimization (config writes debounced 5s, explicit saveNow() before reboot)
 - [x] Watchdog timer (auto-reboot on hang after 30s)
 - [x] Crash logging (save stack trace to SPIFFS, show on next boot)
