@@ -319,6 +319,37 @@ void ScreenSettings::showMeshConfig() {
     item = lv_list_add_btn(list, nullptr, "Changes auto-saved.");
     lv_obj_set_style_text_color(item, theme::TEXT_MUTED, 0);
 
+    // ── TX Power ──────────────────────────────────────────────────
+    label = lv_label_create(list);
+    lv_label_set_text(label, "TX Power:");
+    lv_obj_set_style_text_color(label, theme::TEXT, 0);
+
+    static lv_obj_t* s_txPowerSlider = nullptr;
+    s_txPowerSlider = lv_slider_create(list);
+    lv_slider_set_range(s_txPowerSlider, 5, 22);  // 5-22 dBm for SX1262
+    lv_slider_set_value(s_txPowerSlider, cfg.txPower, LV_ANIM_OFF);
+    lv_obj_set_width(s_txPowerSlider, OMS_SCREEN_W - 30);
+    lv_obj_add_event_cb(s_txPowerSlider, [](lv_event_t* e) {
+        int val = lv_slider_get_value(s_txPowerSlider);
+        oms::config::setTxPower(val);
+        OMS_LOG("UI", "TX power: %d dBm", val);
+    }, LV_EVENT_VALUE_CHANGED, nullptr);
+
+    static lv_obj_t* s_txPowerLabel = nullptr;
+    s_txPowerLabel = lv_label_create(list);
+    char pbuf[16];
+    snprintf(pbuf, sizeof(pbuf), "%d dBm", cfg.txPower);
+    lv_label_set_text(s_txPowerLabel, pbuf);
+    lv_obj_set_style_text_color(s_txPowerLabel, theme::TEXT_MUTED, 0);
+    lv_obj_set_style_text_font(s_txPowerLabel, &lv_font_montserrat_10, 0);
+    // Update label when slider changes
+    lv_obj_add_event_cb(s_txPowerSlider, [](lv_event_t* e) {
+        int val = lv_slider_get_value(s_txPowerSlider);
+        char buf[16];
+        snprintf(buf, sizeof(buf), "%d dBm", val);
+        lv_label_set_text(s_txPowerLabel, buf);
+    }, LV_EVENT_VALUE_CHANGED, nullptr);
+
     item = lv_list_add_btn(list, nullptr, "Region: restart to apply.");
     lv_obj_set_style_text_color(item, theme::ORANGE, 0);
 }

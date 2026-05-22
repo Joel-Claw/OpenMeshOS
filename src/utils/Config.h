@@ -16,6 +16,7 @@ struct Config {
     bool notifySound;           // play sound on incoming message
     char mapTileDir[32];        // SD card path for map tiles
     int  theme;                 // 0 = dark, 1 = light
+    int  txPower;               // 5-22 dBm (SX1262 range)
 };
 
 namespace config {
@@ -25,6 +26,7 @@ namespace config {
 
     void setCallsign(const char* cs);
     void setRegion(const char* reg);
+    void setTxPower(int dBm);
 }
 
 }  // namespace oms

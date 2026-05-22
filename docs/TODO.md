@@ -71,8 +71,8 @@
 - [x] ScreenMap: TileRenderer with PNG decode (lodepng), SD card, PSRAM LRU cache
 - [x] ScreenMap: implement touch/trackball pan
 - [x] ScreenMap: implement zoom controls
-- [ ] ScreenMap: node markers rendering via TileRenderer::drawNodes
-- [ ] ScreenMap: node info popup on tap
+- [x] ScreenMap: node markers rendering via TileRenderer::drawNodes
+- [x] ScreenMap: node info popup on tap
 - [x] ScreenSettings: implement all config fields with live save (callsign, region, brightness, timeout, sound)
 - [x] ScreenSettings: BLE companion toggle
 - [x] ScreenSettings: implement OTA firmware update sub-page

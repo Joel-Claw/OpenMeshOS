@@ -82,7 +82,7 @@ Goal: Full settings, terminal, and polish.
 - [x] Settings screen implementation
   - [x] Radio region selector (EU868, US915, AU915, etc.)
   - [x] Channel selector
-  - [ ] TX power slider
+  - [x] TX power slider
   - [x] Callsign editor
   - [x] Brightness slider
   - [x] Screen timeout selector

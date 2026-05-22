@@ -25,6 +25,7 @@ static void initDefaults(Config& c) {
     c.notifySound      = true;
     strncpy(c.mapTileDir, "/map", sizeof(c.mapTileDir));
     c.theme            = 0;
+    c.txPower          = 17;   // default 17 dBm (~50mW, legal in most regions)
 }
 
 static struct ConfigInit {
@@ -100,6 +101,7 @@ void config::init() {
     s_cfg.screenTimeoutSec = readInt("screenTimeoutSec", 30);
     s_cfg.theme            = readInt("theme", 0);
     s_cfg.notifySound      = readBool("notifySound", true);
+    s_cfg.txPower           = readInt("txPower", 17);
 
     OMS_LOG("Config", "Loaded: callsign=%s region=%s",
             s_cfg.callsign, s_cfg.radioRegion);
@@ -120,7 +122,8 @@ void config::save() {
         "  \"screenTimeoutSec\": %d,\n"
         "  \"notifySound\": %s,\n"
         "  \"mapTileDir\": \"%s\",\n"
-        "  \"theme\": %d\n"
+        "  \"theme\": %d,\n"
+        "  \"txPower\": %d\n"
         "}\n",
         s_cfg.radioRegion,
         s_cfg.callsign,
@@ -129,7 +132,8 @@ void config::save() {
         s_cfg.screenTimeoutSec,
         s_cfg.notifySound ? "true" : "false",
         s_cfg.mapTileDir,
-        s_cfg.theme
+        s_cfg.theme,
+        s_cfg.txPower
     );
     f.close();
     OMS_LOG("Config", "Config saved");
@@ -144,6 +148,13 @@ void config::setCallsign(const char* cs) {
 void config::setRegion(const char* reg) {
     strncpy(s_cfg.radioRegion, reg, sizeof(s_cfg.radioRegion) - 1);
     s_cfg.radioRegion[sizeof(s_cfg.radioRegion) - 1] = '\0';
+    save();
+}
+
+void config::setTxPower(int dBm) {
+    if (dBm < 5) dBm = 5;
+    if (dBm > 22) dBm = 22;
+    s_cfg.txPower = dBm;
     save();
 }
 
