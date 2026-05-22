@@ -217,7 +217,8 @@ bool TileRenderer::renderFrame(lv_obj_t* canvas, float centerLat, float centerLn
 
 // ── drawNodes ──────────────────────────────────────────────────────
 void TileRenderer::drawNodes(lv_obj_t* canvas, const MapNode* nodes, uint16_t count,
-                              float centerLat, float centerLng, int zoom) {
+                              float centerLat, float centerLng, int zoom,
+                              int highlightIdx) {
     if (!canvas || count == 0) return;
 
     lv_draw_buf_t* drawBuf = lv_canvas_get_draw_buf(canvas);
@@ -264,6 +265,18 @@ void TileRenderer::drawNodes(lv_obj_t* canvas, const MapNode* nodes, uint16_t co
             int by = py + (int)(4.0f * sinf(a * (float)M_PI / 8.0f));
             if (bx >= 0 && bx < canvasW && by >= 0 && by < canvasH) {
                 buf16[by * canvasW + bx] = white565;
+            }
+        }
+
+        // Draw highlight ring if this node is selected
+        if ((int)i == highlightIdx) {
+            uint16_t yellow565 = ((255 >> 3) << 11) | ((220 >> 2) << 5) | (0 >> 3);  // yellow
+            for (int a = 0; a < 24; a++) {
+                int bx = px + (int)(7.0f * cosf(a * (float)M_PI / 12.0f));
+                int by = py + (int)(7.0f * sinf(a * (float)M_PI / 12.0f));
+                if (bx >= 0 && bx < canvasW && by >= 0 && by < canvasH) {
+                    buf16[by * canvasW + bx] = yellow565;
+                }
             }
         }
     }

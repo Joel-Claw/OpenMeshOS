@@ -68,7 +68,7 @@ Goal: Offline GPS map with node positions.
 - [x] Tile rendering to LVGL canvas (TileRenderer)
 - [x] Pan (trackball left/right/up/down)
 - [x] Zoom (trackball center press → zoom menu, or +/- buttons)
-- [ ] Node marker overlay (self, contacts, repeaters) — drawNodes() implemented, needs tap-to-select
+- [x] Node marker overlay (self, contacts, repeaters) — with tap-to-select + highlight ring
 - [x] Node tap/select → info popup
 - [x] Tile caching in PSRAM (LRU, 9 tiles)
 - [x] Progressive tile loading (center first, edges after)

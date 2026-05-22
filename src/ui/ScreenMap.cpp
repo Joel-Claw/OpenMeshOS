@@ -162,7 +162,8 @@ void ScreenMap::refresh() {
     // Draw node markers on top of tiles
     if (sMap.nodeCount() > 0) {
         sMap.renderer().drawNodes(_mapCanvas, sMap.nodes(), sMap.nodeCount(),
-                                   sMap.centerLat(), sMap.centerLng(), sMap.zoom());
+                                   sMap.centerLat(), sMap.centerLng(), sMap.zoom(),
+                                   _selectedNode);  // highlight selected node
     }
 
     // Update node info bar
@@ -194,9 +195,23 @@ void ScreenMap::feedInput(int16_t dx, int16_t dy, bool pressed) {
         // Short press: if on a node marker, show popup; otherwise do nothing
         _zoomHold = 0;
         if (_panAccX == 0 && _panAccY == 0) {
-            // Tap on map — find nearest node
-            if (sMap.nodeCount() > 0) {
-                showNodePopup(0);  // For now, show first node
+            // Tap on map — find nearest node to screen center
+            // (full hit-test would need canvas coordinate tracking;
+            //  for now select the closest node to map center)
+            int bestIdx = -1;
+            float bestDist = 1e10f;
+            for (int i = 0; i < sMap.nodeCount(); i++) {
+                const auto& n = sMap.nodes()[i];
+                float dlat = n.lat - sMap.centerLat();
+                float dlng = n.lng - sMap.centerLng();
+                float d = dlat * dlat + dlng * dlng;
+                if (d < bestDist) {
+                    bestDist = d;
+                    bestIdx = i;
+                }
+            }
+            if (bestIdx >= 0) {
+                showNodePopup(bestIdx);
             }
         }
         _panAccX = 0;

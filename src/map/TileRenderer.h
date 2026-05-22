@@ -53,7 +53,8 @@ public:
 
     /// Draw node markers on top of tiles.
     void drawNodes(lv_obj_t* canvas, const MapNode* nodes, uint16_t count,
-                   float centerLat, float centerLng, int zoom);
+                   float centerLat, float centerLng, int zoom,
+                   int highlightIdx = -1);
 
     /// Whether SD card with /map/ directory is available.
     bool hasTiles() const { return _sdPresent; }
