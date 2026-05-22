@@ -11,6 +11,7 @@
 #include "Theme.h"
 #include "../hardware/Board.h"
 #include "../utils/Log.h"
+#include "../utils/Config.h"
 
 #include <lvgl.h>
 #include <TFT_eSPI.h>
@@ -79,6 +80,9 @@ void init() {
 
     // Apply theme
     theme::apply(disp);
+
+    // Apply saved theme mode
+    theme::setLightMode(oms::config::get().theme == 1);
 
     // Load home screen
     ScreenHome::create();

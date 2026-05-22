@@ -17,6 +17,8 @@
 #include "ui/ScreenLock.h"
 #include "utils/Log.h"
 #include "utils/Config.h"
+#include "hardware/Watchdog.h"
+#include "hardware/CrashLog.h"
 
 static oms::KeyboardInput s_kbInput;
 
@@ -26,6 +28,12 @@ void setup() {
     while (!Serial && millis() < 3000) { /* wait up to 3s for serial */ }
 
     OMS_LOG("main", "OpenMeshOS v" OMS_VERSION_STRING " starting");
+
+    // 0) Check for previous crash
+    if (oms::CrashLog::hasCrash()) {
+        oms::CrashLog::showCrashReport();
+    }
+    oms::CrashLog::installHandler();
 
     // 1) Initialise SPIFFS (must come before config and mesh)
     if (!SPIFFS.begin(true)) {
@@ -57,11 +65,15 @@ void setup() {
     // 5) Initialise keyboard LVGL indev
     s_kbInput.initIndev();
 
+    // 6) Start watchdog (30s timeout, auto-reboot on hang)
+    oms::Watchdog::init(30);
+
     OMS_LOG("main", "Ready");
 }
 
 // ── Loop ────────────────────────────────────────────────────────────
 void loop() {
+    oms::Watchdog::feed();  // feed watchdog first thing
     oms::Board::instance().tick();
     s_kbInput.update(oms::Board::instance().keyboard());
 

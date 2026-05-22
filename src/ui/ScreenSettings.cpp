@@ -447,6 +447,33 @@ void ScreenSettings::showDisplay() {
     }
     lv_obj_add_event_cb(s_soundSwitch, sound_cb, LV_EVENT_VALUE_CHANGED, nullptr);
 
+    // ── Theme toggle (dark/light) ──────────────────────────────────
+    lv_obj_t* theme_row = lv_obj_create(list);
+    lv_obj_set_size(theme_row, OMS_SCREEN_W - 20, 30);
+    lv_obj_set_style_bg_color(theme_row, theme::BG, 0);
+    lv_obj_set_style_border_width(theme_row, 0, 0);
+    lv_obj_set_flex_flow(theme_row, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(theme_row, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+
+    label = lv_label_create(theme_row);
+    lv_label_set_text(label, "Light theme:");
+    lv_obj_set_style_text_color(label, theme::TEXT, 0);
+    lv_obj_set_flex_grow(label, 1);
+
+    static lv_obj_t* s_themeSwitch = nullptr;
+    s_themeSwitch = lv_switch_create(theme_row);
+    if (cfg.theme == 1) {
+        lv_obj_add_state(s_themeSwitch, LV_STATE_CHECKED);
+    }
+    lv_obj_add_event_cb(s_themeSwitch, [](lv_event_t* e) {
+        bool on = lv_obj_has_state(s_themeSwitch, LV_STATE_CHECKED);
+        oms::config::get().theme = on ? 1 : 0;  // direct set + save below
+        theme::setLightMode(on);
+        oms::config::save();
+        OMS_LOG("UI", "Theme: %s", on ? "light" : "dark");
+        // Note: full theme refresh requires re-creating current screen
+    }, LV_EVENT_VALUE_CHANGED, nullptr);
+
     // ── BLE Companion ─────────────────────────────────────────────
     lv_obj_t* ble_row = lv_obj_create(list);
     lv_obj_set_size(ble_row, OMS_SCREEN_W - 20, 30);

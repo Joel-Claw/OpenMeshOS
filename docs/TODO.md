@@ -76,7 +76,7 @@
 - [x] ScreenSettings: implement all config fields with live save (callsign, region, brightness, timeout, sound)
 - [x] ScreenSettings: BLE companion toggle
 - [x] ScreenSettings: implement OTA firmware update sub-page
-- [ ] ScreenTerminal: MeshCore CLI passthrough (basic command interpreter done, full passthrough pending)
+- [x] ScreenTerminal: MeshCore CLI passthrough + command history + multi-color output
 - [x] ScreenLock: implement with auto-dimming
 - [ ] Test: trackball navigation between all screens
 

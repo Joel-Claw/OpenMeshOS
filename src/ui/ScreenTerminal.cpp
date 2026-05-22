@@ -37,6 +37,12 @@ bool      ScreenTerminal::_active      = false;
 static char sCmdBuf[128];
 static uint8_t sCmdLen = 0;
 
+// Command history (up/down arrow)
+static constexpr int MAX_HISTORY = 16;
+static char sHistory[MAX_HISTORY][72];
+static int sHistoryCount = 0;
+static int sHistoryPos = -1;  // -1 = not browsing history
+
 // Output text buffer (ring of lines, no dynamic allocation)
 static constexpr int MAX_LINES = 20;
 static constexpr int LINE_LEN = 64;
@@ -69,6 +75,26 @@ static void refreshOutput() {
     lv_label_set_text(ScreenTerminal::_outputArea, buf);
 }
 
+// Colour-coded line variants
+static void addError(const char* text) {
+    // Prefix with error marker for visual distinction
+    char buf[LINE_LEN];
+    snprintf(buf, sizeof(buf), "\xE2\x9C\x96 %s", text);  // ✖ prefix
+    addLine(buf);
+}
+
+static void addWarning(const char* text) {
+    char buf[LINE_LEN];
+    snprintf(buf, sizeof(buf), "\xE2\x9A\xA0 %s", text);  // ⚠ prefix
+    addLine(buf);
+}
+
+static void addSuccess(const char* text) {
+    char buf[LINE_LEN];
+    snprintf(buf, sizeof(buf), "\xE2\x9C\x94 %s", text);  // ✔ prefix
+    addLine(buf);
+}
+
 // Built-in command interpreter
 static void execCommand(const char* cmd) {
     // Echo the command
@@ -84,9 +110,13 @@ static void execCommand(const char* cmd) {
         addLine("  info     - device info");
         addLine("  reboot   - restart device");
         addLine("  mesh     - mesh status");
+        addLine("  mesh send <msg> - send to channel");
         addLine("  config   - show config");
         addLine("  clear    - clear terminal");
         addLine("  free     - memory info");
+        addLine("  gps      - GPS status");
+        addLine("  ble      - BLE status");
+        addLine("  battery  - battery voltage");
     } else if (strcmp(cmd, "version") == 0) {
         addLine(OMS_VERSION_STRING);
     } else if (strcmp(cmd, "info") == 0) {
@@ -97,13 +127,50 @@ static void execCommand(const char* cmd) {
         snprintf(buf, LINE_LEN, "Heap: %u KB free", (unsigned)(ESP.getFreeHeap() / 1024));
         addLine(buf);
     } else if (strcmp(cmd, "reboot") == 0) {
-        addLine("Rebooting...");
+        addWarning("Rebooting...");
         refreshOutput();
         delay(500);
         ESP.restart();
     } else if (strcmp(cmd, "mesh") == 0) {
-        addLine("Mesh: not connected");
-        // When MeshService is fully wired, query real status
+        if (oms::MeshService::instance().initialized()) {
+            char buf[LINE_LEN];
+            snprintf(buf, LINE_LEN, "Mesh: active");
+            addLine(buf);
+            snprintf(buf, LINE_LEN, "  Region: %s", oms::config::get().radioRegion);
+            addLine(buf);
+            snprintf(buf, LINE_LEN, "  Channel: %d", oms::config::get().channel);
+            addLine(buf);
+            snprintf(buf, LINE_LEN, "  TX: %d dBm", oms::config::get().txPower);
+            addLine(buf);
+        } else {
+            addLine("Mesh: not initialized");
+        }
+    } else if (strncmp(cmd, "mesh ", 5) == 0) {
+        // MeshCore CLI passthrough: forward commands to MeshService
+        // Format: "mesh <subcommand> [args]"
+        const char* subcmd = cmd + 5;
+        if (strcmp(subcmd, "state") == 0) {
+            addLine("MeshCore state query not yet implemented");
+        } else if (strcmp(subcmd, "peers") == 0 || strcmp(subcmd, "nodes") == 0) {
+            addLine("Peer list not yet available");
+            // Future: query MeshCore routing table
+        } else if (strcmp(subcmd, "ping") == 0) {
+            addLine("Ping not yet implemented");
+        } else if (strncmp(subcmd, "send ", 5) == 0) {
+            // "mesh send <message>" — send to public channel
+            oms::MeshService::instance().sendChannel(subcmd + 5);
+            char buf[LINE_LEN];
+            snprintf(buf, LINE_LEN, "Sent: %s", subcmd + 5);
+            addSuccess(buf);
+        } else if (strncmp(subcmd, "dm ", 3) == 0) {
+            // "mesh dm <name> <message>" — direct message
+            addLine("DM not yet implemented");
+        } else {
+            char buf[LINE_LEN];
+            snprintf(buf, LINE_LEN, "Unknown mesh cmd: %s", subcmd);
+            addLine(buf);
+            addLine("Try: mesh state|peers|ping|send <msg>");
+        }
     } else if (strcmp(cmd, "config") == 0) {
         const auto& cfg = oms::config::get();
         char buf[LINE_LEN];
@@ -116,7 +183,7 @@ static void execCommand(const char* cmd) {
     } else if (strcmp(cmd, "clear") == 0) {
         sLineHead = 0;
         sLineCount = 0;
-        addLine("Terminal cleared.");
+        addSuccess("Terminal cleared.");
     } else if (strcmp(cmd, "free") == 0) {
         char buf[LINE_LEN];
         snprintf(buf, LINE_LEN, "Heap: %u KB", (unsigned)(ESP.getFreeHeap() / 1024));
@@ -125,11 +192,49 @@ static void execCommand(const char* cmd) {
         addLine(buf);
         snprintf(buf, LINE_LEN, "PSRAM: %u KB", (unsigned)(ESP.getFreePsram() / 1024));
         addLine(buf);
+    } else if (strcmp(cmd, "gps") == 0) {
+        if (oms::Board::instance().hasGPSFix()) {
+            char buf[LINE_LEN];
+            snprintf(buf, LINE_LEN, "GPS: %.6f %.6f",
+                     oms::Board::instance().gpsLat(),
+                     oms::Board::instance().gpsLng());
+            addLine(buf);
+            snprintf(buf, LINE_LEN, "  Alt: %.0fm  Spd: %.1fkm/h",
+                     oms::Board::instance().gpsAltitude(),
+                     oms::Board::instance().gpsSpeed());
+            addLine(buf);
+            snprintf(buf, LINE_LEN, "  Sats: %d  Age: %lus",
+                     oms::Board::instance().gpsSatellites(),
+                     (unsigned long)(oms::Board::instance().gpsAge() / 1000));
+            addLine(buf);
+        } else {
+            addLine("GPS: no fix");
+        }
+    } else if (strcmp(cmd, "ble") == 0) {
+        if (oms::BLECompanion::instance().enabled()) {
+            addLine("BLE: active");
+            char buf[LINE_LEN];
+            snprintf(buf, LINE_LEN, "  Connected: %s",
+                     oms::BLECompanion::instance().isConnected() ? "yes" : "no");
+            addLine(buf);
+        } else {
+            addLine("BLE: disabled");
+        }
+    } else if (strcmp(cmd, "battery") == 0 || strcmp(cmd, "batt") == 0) {
+        if (oms::MeshService::instance().initialized()) {
+            uint16_t mv = oms::MeshService::instance().board().getBattMilliVolts();
+            char buf[LINE_LEN];
+            snprintf(buf, LINE_LEN, "Battery: %.2f V (%u mV)", mv / 1000.0f, mv);
+            addLine(buf);
+        } else {
+            addLine("Battery: N/A");
+        }
     } else if (strlen(cmd) == 0) {
         // empty line, no output
     } else {
+        addError("Unknown command");
         char buf[LINE_LEN];
-        snprintf(buf, LINE_LEN, "Unknown: %s", cmd);
+        snprintf(buf, LINE_LEN, "  Try 'help' for commands");
         addLine(buf);
     }
 }
@@ -246,12 +351,49 @@ void ScreenTerminal::print(const char* text) {
 void ScreenTerminal::submitInput(const char* line) {
     if (!_active) return;
 
+    // Save to history (skip empty and duplicates)
+    if (strlen(line) > 0) {
+        if (sHistoryCount == 0 || strcmp(sHistory[sHistoryCount - 1], line) != 0) {
+            if (sHistoryCount < MAX_HISTORY) {
+                snprintf(sHistory[sHistoryCount], sizeof(sHistory[0]), "%s", line);
+                sHistoryCount++;
+            } else {
+                // Shift history up, add at end
+                memmove(sHistory[0], sHistory[1], sizeof(sHistory[0]) * (MAX_HISTORY - 1));
+                snprintf(sHistory[MAX_HISTORY - 1], sizeof(sHistory[0]), "%s", line);
+            }
+        }
+    }
+    sHistoryPos = -1;  // reset browse position
+
     execCommand(line);
     refreshOutput();
 
     // Clear input field
     if (_inputField) {
         lv_textarea_set_text(_inputField, "");
+    }
+}
+
+void ScreenTerminal::handleKey(uint8_t key) {
+    if (!_active || !_inputField) return;
+
+    // LVGL KEY_UP = 17, KEY_DOWN = 19 (LV_KEY_UP/DOWN)
+    if (key == LV_KEY_UP) {
+        if (sHistoryCount > 0 && sHistoryPos < sHistoryCount - 1) {
+            sHistoryPos++;
+            int idx = sHistoryCount - 1 - sHistoryPos;
+            lv_textarea_set_text(_inputField, sHistory[idx]);
+        }
+    } else if (key == LV_KEY_DOWN) {
+        if (sHistoryPos > 0) {
+            sHistoryPos--;
+            int idx = sHistoryCount - 1 - sHistoryPos;
+            lv_textarea_set_text(_inputField, sHistory[idx]);
+        } else if (sHistoryPos == 0) {
+            sHistoryPos = -1;
+            lv_textarea_set_text(_inputField, "");
+        }
     }
 }
 

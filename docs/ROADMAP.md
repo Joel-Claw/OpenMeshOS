@@ -61,8 +61,8 @@ Goal: Send and receive messages on the mesh.
 
 Goal: Offline GPS map with node positions.
 
-- [ ] GPS serial driver (T-Deck Plus built-in GPS)
-- [ ] TinyGPSPlus integration
+- [x] GPS serial driver (T-Deck Plus built-in GPS)
+- [x] TinyGPSPlus integration
 - [x] SD card initialization and tile directory scan
 - [x] PNG tile decoder (lodepng)
 - [x] Tile rendering to LVGL canvas (TileRenderer)
@@ -87,16 +87,16 @@ Goal: Full settings, terminal, and polish.
   - [x] Brightness slider
   - [x] Screen timeout selector
   - [x] Sound toggle
-  - [ ] Theme toggle (dark/light)
+  - [x] Theme toggle (dark/light)
   - [x] BLE toggle
 - [ ] Repeater scanner
   - Discover repeaters on the mesh
   - Show signal strength, distance, uptime
   - Whitelist management
-- [ ] Terminal screen
-  - Full MeshCore CLI
-  - Command history (up/down arrows)
-  - Multi-colour output (errors red, warnings orange, data green)
+- [x] Terminal screen
+  - [x] Full MeshCore CLI
+  - [x] Command history (up/down arrows)
+  - [x] Multi-colour output (errors red, warnings orange, data green)
 - [x] Notifications
   - [x] Sound on incoming message (buzzer)
   - [x] Screen wake on incoming message
@@ -132,8 +132,8 @@ Goal: Production-ready firmware.
 - [ ] Long-duration stress test (48h continuous operation)
 - [ ] SD card corruption prevention (proper unmount, wear leveling)
 - [ ] SPIFFS wear minimization (config writes only on explicit save)
-- [ ] Watchdog timer (auto-reboot on hang after 30s)
-- [ ] Crash logging (save stack trace to SPIFFS, show on next boot)
+- [x] Watchdog timer (auto-reboot on hang after 30s)
+- [x] Crash logging (save stack trace to SPIFFS, show on next boot)
 - [ ] Security audit (MeshCore encryption, no plaintext key storage)
 - [ ] User documentation (flashing guide, settings reference, FAQ)
 - [x] Release binaries on GitHub with SHA-256 checksums

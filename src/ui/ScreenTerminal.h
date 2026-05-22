@@ -27,6 +27,9 @@ public:
     // Feed a line of input (from keyboard)
     static void submitInput(const char* line);
 
+    // Handle keyboard special keys (up/down for history)
+    static void handleKey(uint8_t key);
+
     // State (public for static callback access)
     static lv_obj_t* _screen;
     static lv_obj_t* _outputArea;
