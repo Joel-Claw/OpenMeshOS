@@ -71,7 +71,7 @@ Goal: Offline GPS map with node positions.
 - [ ] Node marker overlay (self, contacts, repeaters) — drawNodes() implemented, needs tap-to-select
 - [x] Node tap/select → info popup
 - [x] Tile caching in PSRAM (LRU, 9 tiles)
-- [ ] Progressive tile loading (center first, edges after)
+- [x] Progressive tile loading (center first, edges after)
 - [x] Tile download helper script (`scripts/download_tiles.py`)
 - [x] Map screen accessible from home screen navigation
 

@@ -35,6 +35,11 @@ public:
     bool hasGPSFix() const;
     float gpsLat() const;
     float gpsLng() const;
+    float gpsAltitude() const;  // meters
+    float gpsSpeed() const;     // km/h
+    float gpsCourse() const;    // degrees
+    int   gpsSatellites() const;
+    uint32_t gpsAge() const;    // ms since last fix
 
     // Display backlight
     void setBacklight(bool on) { digitalWrite(2, on ? HIGH : LOW); }

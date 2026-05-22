@@ -229,6 +229,18 @@ void ScreenSettings::showDeviceInfo() {
     }
     item = lv_list_add_btn(list, nullptr, buf);
     lv_obj_set_style_text_color(item, theme::TEXT_MUTED, 0);
+
+    // GPS info (if present)
+    if (oms::Board::instance().hasGPSFix()) {
+        snprintf(buf, sizeof(buf), "GPS: %.4f %.4f (%d sats)",
+                 oms::Board::instance().gpsLat(),
+                 oms::Board::instance().gpsLng(),
+                 oms::Board::instance().gpsSatellites());
+    } else {
+        snprintf(buf, sizeof(buf), "GPS: no fix");
+    }
+    item = lv_list_add_btn(list, nullptr, buf);
+    lv_obj_set_style_text_color(item, theme::TEXT_MUTED, 0);
 }
 
 // ── Mesh Config (interactive) ──────────────────────────────────────

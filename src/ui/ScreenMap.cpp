@@ -137,6 +137,7 @@ void ScreenMap::create() {
 void ScreenMap::goBack(lv_event_t* e) {
     (void)e;
     _active = false;
+    if (_nodePopup) dismissNodePopup();
     ScreenHome::create();
 }
 

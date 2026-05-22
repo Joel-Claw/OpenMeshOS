@@ -141,4 +141,44 @@ float Board::gpsLng() const {
 #endif
 }
 
+float Board::gpsAltitude() const {
+#ifdef OMS_HAS_BUILTIN_GPS
+    return _gps.altitude.meters();
+#else
+    return 0.0f;
+#endif
+}
+
+float Board::gpsSpeed() const {
+#ifdef OMS_HAS_BUILTIN_GPS
+    return _gps.speed.kmph();
+#else
+    return 0.0f;
+#endif
+}
+
+float Board::gpsCourse() const {
+#ifdef OMS_HAS_BUILTIN_GPS
+    return _gps.course.deg();
+#else
+    return 0.0f;
+#endif
+}
+
+int Board::gpsSatellites() const {
+#ifdef OMS_HAS_BUILTIN_GPS
+    return _gps.satellites.value();
+#else
+    return 0;
+#endif
+}
+
+uint32_t Board::gpsAge() const {
+#ifdef OMS_HAS_BUILTIN_GPS
+    return _gps.location.age();
+#else
+    return UINT32_MAX;
+#endif
+}
+
 }  // namespace oms

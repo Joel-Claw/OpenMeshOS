@@ -99,12 +99,43 @@ int TileRenderer::calcVisibleTiles(float centerLat, float centerLng, int zoom,
     int startTy = centerTy - (canvasH / 2 - subY) / TILE_PX - 1;
 
     int count = 0;
-    for (int dy = 0; dy < tilesY && count < maxOut; dy++) {
-        for (int dx = 0; dx < tilesX && count < maxOut; dx++) {
-            out[count].tx = startTx + dx;
-            out[count].ty = startTy + dy;
-            count++;
+    // Generate all visible tiles, then sort by distance from center
+    // for progressive loading (center tiles first)
+    struct TileDist {
+        int tx, ty;
+        int dist;  // Manhattan distance from center tile
+    };
+    TileDist tiles[CACHE_SIZE + 4];
+    int tileCount = 0;
+
+    for (int dy = 0; dy < tilesY; dy++) {
+        for (int dx = 0; dx < tilesX; dx++) {
+            int ttx = startTx + dx;
+            int tty = startTy + dy;
+            int dist = abs(ttx - centerTx) + abs(tty - centerTy);
+            tiles[tileCount].tx = ttx;
+            tiles[tileCount].ty = tty;
+            tiles[tileCount].dist = dist;
+            tileCount++;
         }
+    }
+
+    // Sort by Manhattan distance from center (closest first)
+    for (int i = 0; i < tileCount - 1; i++) {
+        for (int j = i + 1; j < tileCount; j++) {
+            if (tiles[j].dist < tiles[i].dist) {
+                TileDist tmp = tiles[i];
+                tiles[i] = tiles[j];
+                tiles[j] = tmp;
+            }
+        }
+    }
+
+    // Copy sorted tiles to output
+    for (int i = 0; i < tileCount && count < maxOut; i++) {
+        out[count].tx = tiles[i].tx;
+        out[count].ty = tiles[i].ty;
+        count++;
     }
 
     return count;
