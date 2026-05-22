@@ -131,11 +131,11 @@ Goal: Production-ready firmware.
 - [ ] Memory audit (no fragmentation after 72h runtime)
 - [ ] Long-duration stress test (48h continuous operation)
 - [ ] SD card corruption prevention (proper unmount, wear leveling)
-- [ ] SPIFFS wear minimization (config writes only on explicit save)
+- [x] SPIFFS wear minimization (config writes debounced 5s, explicit saveNow() before reboot)
 - [x] Watchdog timer (auto-reboot on hang after 30s)
 - [x] Crash logging (save stack trace to SPIFFS, show on next boot)
 - [ ] Security audit (MeshCore encryption, no plaintext key storage)
-- [ ] User documentation (flashing guide, settings reference, FAQ)
+- [x] User documentation (flashing guide, settings reference, FAQ) — docs/USER_GUIDE.md
 - [x] Release binaries on GitHub with SHA-256 checksums
 - [x] Web flasher page (like MeshCore's) — instructions in release notes
 

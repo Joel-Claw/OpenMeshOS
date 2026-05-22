@@ -14,6 +14,9 @@ static const char* CONFIG_PATH = "/oms.cfg";
 
 // ── Defaults ────────────────────────────────────────────────────────
 static Config s_cfg;
+static bool s_dirty = false;     // true if config changed but not yet persisted
+static uint32_t s_dirtyTime = 0; // millis() when dirty flag was set
+static constexpr uint32_t DEFERRED_SAVE_MS = 5000; // 5s debounce before writing to SPIFFS
 
 // Initialise defaults
 static void initDefaults(Config& c) {
@@ -142,20 +145,39 @@ void config::save() {
 void config::setCallsign(const char* cs) {
     strncpy(s_cfg.callsign, cs, sizeof(s_cfg.callsign) - 1);
     s_cfg.callsign[sizeof(s_cfg.callsign) - 1] = '\0';
-    save();
+    markDirty();
 }
 
 void config::setRegion(const char* reg) {
     strncpy(s_cfg.radioRegion, reg, sizeof(s_cfg.radioRegion) - 1);
     s_cfg.radioRegion[sizeof(s_cfg.radioRegion) - 1] = '\0';
-    save();
+    markDirty();
 }
 
 void config::setTxPower(int dBm) {
     if (dBm < 5) dBm = 5;
     if (dBm > 22) dBm = 22;
     s_cfg.txPower = dBm;
+    markDirty();
+}
+
+void config::markDirty() {
+    s_dirty = true;
+    s_dirtyTime = millis();
+    OMS_LOG("Config", "Config marked dirty (deferred save)");
+}
+
+void config::tick() {
+    if (!s_dirty) return;
+    if (millis() - s_dirtyTime >= DEFERRED_SAVE_MS) {
+        save();
+        s_dirty = false;
+    }
+}
+
+void config::saveNow() {
     save();
+    s_dirty = false;
 }
 
 }  // namespace oms

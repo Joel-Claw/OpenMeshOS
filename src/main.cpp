@@ -111,4 +111,7 @@ void loop() {
     if (oms::ui::ScreenLock::isActive()) {
         oms::ui::ScreenLock::update();
     }
+
+    // Deferred config save (SPIFFS wear minimization)
+    oms::config::tick();
 }

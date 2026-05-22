@@ -27,6 +27,11 @@ namespace config {
     void setCallsign(const char* cs);
     void setRegion(const char* reg);
     void setTxPower(int dBm);
+
+    // SPIFFS wear minimization: mark dirty, defer save
+    void markDirty();
+    void tick();            // call in loop(), flushes dirty config after 5s debounce
+    void saveNow();        // explicit immediate save (e.g. before reboot)
 }
 
 }  // namespace oms

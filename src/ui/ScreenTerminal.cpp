@@ -128,6 +128,7 @@ static void execCommand(const char* cmd) {
         addLine(buf);
     } else if (strcmp(cmd, "reboot") == 0) {
         addWarning("Rebooting...");
+        oms::config::saveNow();  // flush config before reboot
         refreshOutput();
         delay(500);
         ESP.restart();
