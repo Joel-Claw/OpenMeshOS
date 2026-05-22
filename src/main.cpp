@@ -19,6 +19,7 @@
 #include "utils/Config.h"
 #include "hardware/Watchdog.h"
 #include "hardware/CrashLog.h"
+#include "hardware/PowerManager.h"
 
 static oms::KeyboardInput s_kbInput;
 
@@ -68,6 +69,9 @@ void setup() {
     // 6) Start watchdog (30s timeout, auto-reboot on hang)
     oms::Watchdog::init(30);
 
+    // 7) Initialize power management (light sleep, dynamic frequency scaling)
+    oms::PowerManager::instance().init();
+
     OMS_LOG("main", "Ready");
 }
 
@@ -114,4 +118,7 @@ void loop() {
 
     // Deferred config save (SPIFFS wear minimization)
     oms::config::tick();
+
+    // Power: yield to idle task (may enter light sleep)
+    oms::PowerManager::instance().idle();
 }

@@ -127,7 +127,7 @@ Goal: Support other ESP32-S3 LoRa devices.
 
 Goal: Production-ready firmware.
 
-- [ ] Power optimization (sleep modes, LoRa TX burst timing)
+- [x] Power optimization (sleep modes, LoRa TX burst timing)
 - [ ] Memory audit (no fragmentation after 72h runtime)
 - [ ] Long-duration stress test (48h continuous operation)
 - [x] SD card corruption prevention (SDCard manager with safe mount/unmount)
