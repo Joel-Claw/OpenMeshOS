@@ -13,12 +13,10 @@ class Watchdog {
 public:
     static void init(uint32_t timeoutSec = 30) {
         OMS_LOG("Watchdog", "Starting, timeout=%lus", (unsigned long)timeoutSec);
-        esp_task_wdt_config_t cfg = {
-            .timeout_ms = timeoutSec * 1000,
-            .idle_core_mask = (1 << 0),  // monitor core 0 (Arduino loop)
-            .trigger_panic = true,
-        };
-        esp_task_wdt_init(&cfg);
+        // Old ESP-IDF API: esp_task_wdt_init(timeout, panic)
+        // New ESP-IDF 5.x API: esp_task_wdt_init(&config)
+        // The Arduino framework currently ships ESP-IDF 4.x style.
+        esp_task_wdt_init(timeoutSec, true);  // panic on timeout
         esp_task_wdt_add(nullptr);  // add current task
     }
 

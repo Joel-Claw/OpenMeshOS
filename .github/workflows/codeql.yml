@@ -19,11 +19,24 @@ jobs:
         with:
           submodules: true
 
+      - name: Cache PlatformIO
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.platformio
+            .pio
+          key: pio-${{ runner.os }}-${{ hashFiles('platformio.ini') }}
+          restore-keys: |
+            pio-${{ runner.os }}-
+
       - name: Install PlatformIO
         run: pip install platformio
 
+      - name: Install dependencies
+        run: pio pkg install -e t-deck
+
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with:
           languages: cpp
           queries: security-extended
@@ -32,6 +45,6 @@ jobs:
         run: pio run -e t-deck
 
       - name: Analyze
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4
         with:
           category: "/language:cpp"

@@ -3,11 +3,19 @@
 //
 // Uses esp_light_sleep_start() to save power between loop iterations.
 // ESP32-S3 wakes from light sleep on GPIO interrupts or timer.
+//
+// Power management is configured at build time. If the ESP-IDF PM
+// framework is enabled (CONFIG_PM_ENABLE), we use esp_pm_configure()
+// for automatic DVFS and light sleep. Otherwise, we fall back to a
+// simple yield-based idle that still saves some power.
 
 #include "PowerManager.h"
 #include "../utils/Log.h"
 #include <esp_sleep.h>
+
+#if CONFIG_PM_ENABLE
 #include <esp_pm.h>
+#endif
 
 namespace oms {
 
@@ -17,14 +25,10 @@ PowerManager& PowerManager::instance() {
 }
 
 void PowerManager::init() {
-    // Configure automatic light sleep under PM framework
-    // ESP32-S3 PM: dynamically adjusts CPU frequency and enters light sleep
-    // when idle. This is the simplest approach for Arduino loop().
-
-#if CONFIG_FREERTOS_USE_TICKLESS_IDLE
-    OMS_LOG("Power", "Tickless idle already enabled in menuconfig");
-#else
-    // Enable dynamic frequency scaling and auto light sleep
+#if CONFIG_PM_ENABLE
+    // Enable dynamic frequency scaling and auto light sleep.
+    // This requires CONFIG_PM_ENABLE=y and CONFIG_FREERTOS_USE_TICKLESS_IDLE=y
+    // in sdkconfig, which is set when using a custom partition with PM support.
     esp_pm_config_t pm_cfg = {
         .max_freq_mhz = 240,
         .min_freq_mhz = 40,       // drop to 40MHz when idle
@@ -36,6 +40,12 @@ void PowerManager::init() {
     } else {
         OMS_LOG("Power", "PM config failed: %s", esp_err_to_name(err));
     }
+#else
+    // No ESP-IDF PM framework. Use simple yield-based idle.
+    // The device will still work fine; it just won't auto-adjust CPU
+    // frequency or enter light sleep. This is the default for Arduino
+    // framework builds without custom sdkconfig.
+    OMS_LOG("Power", "PM framework not available, using simple yield idle");
 #endif
 
     _initialized = true;
@@ -45,8 +55,8 @@ void PowerManager::idle() {
     if (_noSleep || !_initialized) return;
 
     // Let FreeRTOS idle task enter light sleep if no work pending.
-    // This happens automatically with esp_pm_configure + tickless idle.
-    // We just yield here to give the idle task a chance.
+    // With PM configured + tickless idle, this happens automatically.
+    // Without PM, we just yield to give other tasks a chance.
     delay(1);  // 1ms yield; PM will enter light sleep if nothing else runs
     _totalSleepMs++;
 }
