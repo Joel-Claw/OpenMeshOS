@@ -21,6 +21,10 @@
 #include "ScreenHome.h"
 #include "Theme.h"
 #include "../mesh/MeshService.h"
+#include "../mesh/TDeckBoard.h"
+#include "../mesh/BLECompanion.h"
+#include "../hardware/Board.h"
+#include "../hardware/Notification.h"
 #include "../utils/Config.h"
 #include "../utils/Log.h"
 #include "../version.h"
@@ -159,7 +163,7 @@ static void execCommand(const char* cmd) {
             addLine("Ping not yet implemented");
         } else if (strncmp(subcmd, "send ", 5) == 0) {
             // "mesh send <message>" — send to public channel
-            oms::MeshService::instance().sendChannel(subcmd + 5);
+            oms::MeshService::instance().sendChannel("public", subcmd + 5);
             char buf[LINE_LEN];
             snprintf(buf, LINE_LEN, "Sent: %s", subcmd + 5);
             addSuccess(buf);

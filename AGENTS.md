@@ -15,13 +15,18 @@ src/
   hardware/Board.h/cpp — T-Deck hardware abstraction
   hardware/Keyboard.h/cpp — BBQ10KB I2C keyboard (planned)
   mesh/MeshService.h/cpp — MeshCore bridge
+  mesh/NodeTracker.h/cpp — Discovered node tracking (fixed-size array)
+  mesh/OpenMesh.h/cpp — MeshCore subclass (callback overrides)
   ui/UIScreen.h/cpp    — LVGL display controller
   ui/ScreenHome.h/cpp  — Home/chat screen
   ui/ScreenMap.h/cpp   — Map screen (planned)
-  ui/ScreenSettings.h/cpp — Settings (planned)
+  ui/ScreenSettings.h/cpp — Settings (callsign, region, brightness, timeout, sound, theme)
+  ui/ScreenScanner.h/cpp — Node scanner (discovered mesh nodes)
   ui/ScreenTerminal.h/cpp — Terminal (planned)
   ui/Theme.h/cpp       — Colour palette
   map/MapEngine.h/cpp  — Tile coordinate math + offline map
+  map/MapTypes.h        — Shared map types (MapNode struct)
+  map/TileRenderer.h/cpp — Tile rendering pipeline
   utils/Config.h/cpp   — Persistent settings (SPIFFS)
   utils/Log.h          — Serial logger
 lib/

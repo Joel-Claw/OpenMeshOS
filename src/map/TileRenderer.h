@@ -11,6 +11,7 @@
 #include <Arduino.h>
 #include <lvgl.h>
 #include <SD.h>
+#include "MapTypes.h"  // MapNode struct
 
 namespace oms {
 

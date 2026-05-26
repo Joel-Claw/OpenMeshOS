@@ -161,6 +161,11 @@ void config::setTxPower(int dBm) {
     markDirty();
 }
 
+void config::setTheme(int t) {
+    s_cfg.theme = t;
+    markDirty();
+}
+
 void config::markDirty() {
     s_dirty = true;
     s_dirtyTime = millis();

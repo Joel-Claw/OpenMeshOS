@@ -21,6 +21,7 @@
 
 #include "ScreenSettings.h"
 #include "ScreenHome.h"
+#include "ScreenScanner.h"
 #include "Theme.h"
 #include "../mesh/MeshService.h"
 #include "../mesh/BLECompanion.h"
@@ -63,6 +64,10 @@ static void export_import_cb(lv_event_t* e) {
 
 static void about_cb(lv_event_t* e) {
     ScreenSettings::showAbout();
+}
+
+static void scanner_cb(lv_event_t* e) {
+    oms::ui::ScreenScanner::create();
 }
 
 static void ota_cb(lv_event_t* e) {
@@ -133,6 +138,10 @@ void ScreenSettings::create() {
     item = lv_list_add_btn(_menuList, LV_SYMBOL_BELL, "About");
     lv_obj_set_style_text_color(item, theme::TEXT, 0);
     lv_obj_add_event_cb(item, about_cb, LV_EVENT_CLICKED, nullptr);
+
+    item = lv_list_add_btn(_menuList, LV_SYMBOL_WIFI, "Node Scanner");
+    lv_obj_set_style_text_color(item, theme::GREEN, 0);
+    lv_obj_add_event_cb(item, scanner_cb, LV_EVENT_CLICKED, nullptr);
 
     item = lv_list_add_btn(_menuList, LV_SYMBOL_UPLOAD, "OTA Update");
     lv_obj_set_style_text_color(item, theme::TEXT, 0);
@@ -467,9 +476,8 @@ void ScreenSettings::showDisplay() {
     }
     lv_obj_add_event_cb(s_themeSwitch, [](lv_event_t* e) {
         bool on = lv_obj_has_state(s_themeSwitch, LV_STATE_CHECKED);
-        oms::config::get().theme = on ? 1 : 0;  // direct set + save below
+        oms::config::setTheme(on ? 1 : 0);
         theme::setLightMode(on);
-        oms::config::save();
         OMS_LOG("UI", "Theme: %s", on ? "light" : "dark");
         // Note: full theme refresh requires re-creating current screen
     }, LV_EVENT_VALUE_CHANGED, nullptr);

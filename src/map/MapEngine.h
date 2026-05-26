@@ -10,16 +10,10 @@
 
 #include <Arduino.h>
 #include <stdint.h>
+#include "MapTypes.h"
+#include "TileRenderer.h"
 
 namespace oms {
-
-struct MapNode {
-    float lat;
-    float lng;
-    char  name[16];
-    int   rssi;           // signal strength
-    bool  isRepeater;
-};
 
 class MapEngine {
 public:

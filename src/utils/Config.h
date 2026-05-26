@@ -28,6 +28,9 @@ namespace config {
     void setRegion(const char* reg);
     void setTxPower(int dBm);
 
+    /// Set theme (0=dark, 1=light)
+    void setTheme(int t);
+
     // SPIFFS wear minimization: mark dirty, defer save
     void markDirty();
     void tick();            // call in loop(), flushes dirty config after 5s debounce

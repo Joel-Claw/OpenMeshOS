@@ -273,7 +273,7 @@ void ScreenMap::showNodePopup(uint16_t nodeIndex) {
 
     // RSSI + hops
     char info1[32];
-    snprintf(info1, sizeof(info1), "RSSI: %d dBm  Hops: %d", node.rssi, node.hopCount);
+    snprintf(info1, sizeof(info1), "RSSI: %d dBm%s", node.rssi, node.isRepeater ? "  [RP]" : "");
     lv_obj_t* rssi = lv_label_create(_nodePopup);
     lv_label_set_text(rssi, info1);
     lv_obj_set_style_text_color(rssi, theme::TEXT, 0);

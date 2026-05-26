@@ -90,9 +90,15 @@ Goal: Full settings, terminal, and polish.
   - [x] Theme toggle (dark/light)
   - [x] BLE toggle
 - [ ] Repeater scanner
-  - Discover repeaters on the mesh
-  - Show signal strength, distance, uptime
-  - Whitelist management
+  - [x] NodeTracker: fixed-size node tracker with onAdvert callback
+  - [x] ScreenScanner: LVGL UI showing discovered nodes, type, RSSI, distance
+  - [x] Haversine distance calculation from GPS
+  - [x] Whitelist toggle (long-press)
+  - [x] Settings menu entry (Node Scanner)
+  - [ ] Test: verify node list updates from MeshCore adverts
+  - [ ] Discover repeaters on the mesh
+  - [ ] Show signal strength, distance, uptime
+  - [ ] Whitelist management
 - [x] Terminal screen
   - [x] Full MeshCore CLI
   - [x] Command history (up/down arrows)

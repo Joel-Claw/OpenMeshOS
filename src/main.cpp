@@ -15,6 +15,7 @@
 #include "ui/ScreenHome.h"
 #include "ui/ScreenMap.h"
 #include "ui/ScreenLock.h"
+#include "ui/ScreenScanner.h"
 #include "utils/Log.h"
 #include "utils/Config.h"
 #include "hardware/Watchdog.h"
@@ -115,6 +116,9 @@ void loop() {
     if (oms::ui::ScreenLock::isActive()) {
         oms::ui::ScreenLock::update();
     }
+
+    // Update node scanner screen if active
+    oms::ui::ScreenScanner::tick();
 
     // Deferred config save (SPIFFS wear minimization)
     oms::config::tick();

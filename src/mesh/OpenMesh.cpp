@@ -5,8 +5,11 @@
 // Received messages are pushed into MessageBus for the UI to consume.
 
 #include "OpenMesh.h"
+#include "MeshService.h"
 #include "MessageBus.h"
+#include "NodeTracker.h"
 #include "../hardware/Notification.h"
+#include "../hardware/Board.h"
 #include "../utils/Log.h"
 
 namespace oms {
@@ -16,6 +19,35 @@ void OpenMesh::onAdvertRecv(mesh::Packet* packet, const mesh::Identity& id,
     OMS_LOG("Mesh", "Advert from %02X%02X%02X%02X (ts=%u, data=%u bytes)",
             id.pub_key[0], id.pub_key[1], id.pub_key[2], id.pub_key[3],
             timestamp, (unsigned)app_data_len);
+
+    // Parse advert data (name, type, location) for node tracker
+    char name[24] = {0};
+    uint8_t adv_type = ADV_TYPE_CHAT;  // default
+    int32_t lat = 0, lon = 0;
+    int rssi = 0;
+
+    if (app_data && app_data_len > 0) {
+        AdvertDataParser parser(app_data, (uint8_t)app_data_len);
+        if (parser.isValid()) {
+            adv_type = parser.getType();
+            if (parser.hasName()) {
+                strncpy(name, parser.getName(), sizeof(name) - 1);
+            }
+            if (parser.hasLatLon()) {
+                lat = parser.getIntLat();
+                lon = parser.getIntLon();
+            }
+        }
+    }
+
+    // Get RSSI from radio
+    if (packet) {
+        rssi = MeshService::instance().rssi();
+    }
+
+    // Track this node
+    NodeTracker::instance().onAdvert(
+        id.pub_key, adv_type, name, lat, lon, rssi);
 }
 
 void OpenMesh::onPeerDataRecv(mesh::Packet* packet, uint8_t type, int sender_idx,
