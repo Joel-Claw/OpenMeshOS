@@ -97,7 +97,7 @@ Goal: Full settings, terminal, and polish.
   - [x] Settings menu entry (Node Scanner)
   - [ ] Test: verify node list updates from MeshCore adverts
   - [ ] Discover repeaters on the mesh
-  - [ ] Show signal strength, distance, uptime
+  - [x] Show signal strength, distance, uptime — quality column (+++/++/+/-), age (now/Xs/Xm/Xh), distance (m/km)
   - [ ] Whitelist management
 - [x] Terminal screen
   - [x] Full MeshCore CLI

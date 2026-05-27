@@ -103,9 +103,9 @@
 
 ## Polish
 
-- [ ] Font size audit (nothing below 10px)
+- [x] Font size audit (nothing below 10px) — all fonts montserrat_10+
 - [ ] Touch responsiveness tuning
-- [ ] Trackball debounce and acceleration
+- [x] Trackball debounce and acceleration (3-tick debounce, quadratic acceleration)
 - [x] Sound/buzzer notification on incoming message
 - [x] Screen wake on incoming message
 - [x] Battery icon in status bar with live voltage
