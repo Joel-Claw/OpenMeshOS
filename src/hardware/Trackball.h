@@ -28,10 +28,11 @@ public:
     // Initialize: detect trackball type and configure
     void begin(TwoWire& wire);
 
-    // Poll for movement (call from main loop)
+    // Poll for movement (call from main loop, ~60Hz)
     void tick();
 
     // Consume accumulated delta and press
+    // dx/dy are accelerated values (pixels per frame)
     void consumeDelta(int16_t& dx, int16_t& dy);
     bool consumePress();
 
@@ -41,10 +42,26 @@ public:
 private:
     TrackballType _type = TrackballType::NONE;
 
-    // Accumulated movement
-    int16_t _dx = 0;
-    int16_t _dy = 0;
+    // Accumulated raw movement (before acceleration)
+    int16_t _rawDx = 0;
+    int16_t _rawDy = 0;
     bool   _pressed = false;
+
+    // Debounce: press must be stable for N ticks
+    static constexpr uint8_t PRESS_DEBOUNCE_TICKS = 3;
+    uint8_t _pressCounter = 0;     // counts consecutive pressed ticks
+    bool    _pressRegistered = false; // true once per press event
+
+    // Acceleration: exponential curve for comfortable navigation
+    // Raw delta is squared (with minimum) to create faster movement
+    // when scrolling quickly
+    static constexpr int16_t ACCEL_MIN = 1;          // minimum movement per frame
+    static constexpr int16_t ACCEL_THRESHOLD = 4;    // raw delta above this gets accelerated
+    static constexpr int16_t ACCEL_CURVE_SHIFT = 1;  // divide raw by 2^N before squaring
+    static constexpr int16_t ACCEL_MAX = 12;           // cap maximum delta per frame
+
+    /// Apply acceleration curve to raw delta
+    static int16_t accelerate(int16_t raw);
 
     // GPIO pin sets per variant (defined in .cpp)
     struct GPIOPins {

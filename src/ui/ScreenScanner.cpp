@@ -6,10 +6,10 @@
 //   +------------------------------+ 240px
 //   | [←]  Node Scanner    [scan]  |  top bar (28px)
 //   |------------------------------|
-//   | Type  Name          RSSI  km |  node rows
-//   | CH    Alpha         -42   1.2|
-//   | RP    Repeater-1   -67   3.5|
-//   | SE    Sensor-NE    -89   --  |
+//   | TY Name       Sig dBm  km Age |  column header
+//   | CH Alpha      ++   -42  1.2 now|
+//   | RP Repeater-1  +   -67  3.5 5m |
+//   | SE Sensor-NE   -   -89  --   2h|
 //   |                              |
 //   | Nodes: 3   Repeaters: 1     |  status bar
 //   +------------------------------+ 320px wide
@@ -139,8 +139,14 @@ void ScreenScanner::create() {
     lv_obj_set_style_text_font(h_name, &lv_font_montserrat_10, 0);
     lv_obj_set_flex_grow(h_name, 1);
 
+    lv_obj_t* h_sig = lv_label_create(header);
+    lv_label_set_text(h_sig, "Sig");
+    lv_obj_set_style_text_color(h_sig, theme::TEXT_MUTED, 0);
+    lv_obj_set_style_text_font(h_sig, &lv_font_montserrat_10, 0);
+    lv_obj_set_width(h_sig, 24);
+
     lv_obj_t* h_rssi = lv_label_create(header);
-    lv_label_set_text(h_rssi, "RSSI");
+    lv_label_set_text(h_rssi, "dBm");
     lv_obj_set_style_text_color(h_rssi, theme::TEXT_MUTED, 0);
     lv_obj_set_style_text_font(h_rssi, &lv_font_montserrat_10, 0);
     lv_obj_set_width(h_rssi, 32);
@@ -150,6 +156,12 @@ void ScreenScanner::create() {
     lv_obj_set_style_text_color(h_dist, theme::TEXT_MUTED, 0);
     lv_obj_set_style_text_font(h_dist, &lv_font_montserrat_10, 0);
     lv_obj_set_width(h_dist, 28);
+
+    lv_obj_t* h_age = lv_label_create(header);
+    lv_label_set_text(h_age, "Age");
+    lv_obj_set_style_text_color(h_age, theme::TEXT_MUTED, 0);
+    lv_obj_set_style_text_font(h_age, &lv_font_montserrat_10, 0);
+    lv_obj_set_width(h_age, 24);
 
     // ── Node list ────────────────────────────────────────────────
     _list = lv_list_create(_screen);
@@ -264,17 +276,26 @@ void ScreenScanner::refreshList() {
 
         // Age (how long ago seen)
         uint32_t ageSec = (millis() - node->lastSeenMs) / 1000;
-        const char* ageStr;
-        if (ageSec < 60) ageStr = "";
-        else if (ageSec < 3600) {
-            // We'll add this as small text below
-            ageStr = "";
+        char ageStr[8] = "";
+        if (ageSec < 5) {
+            snprintf(ageStr, sizeof(ageStr), "now");
+        } else if (ageSec < 60) {
+            snprintf(ageStr, sizeof(ageStr), "%us", (unsigned)ageSec);
+        } else if (ageSec < 3600) {
+            snprintf(ageStr, sizeof(ageStr), "%um", (unsigned)(ageSec / 60));
         } else {
-            ageStr = "";
+            snprintf(ageStr, sizeof(ageStr), "%uh", (unsigned)(ageSec / 3600));
         }
 
-        snprintf(rowText, sizeof(rowText), "%s %-12s %4d %s",
-                 prefix, node->name, node->rssi, distStr);
+        // Signal quality label
+        const char* qualityStr;
+        if (node->rssi > -50) qualityStr = "+++";      // excellent
+        else if (node->rssi > -70) qualityStr = "++";   // good
+        else if (node->rssi > -85) qualityStr = "+";     // fair
+        else qualityStr = "-";                           // poor
+
+        snprintf(rowText, sizeof(rowText), "%s %-10s %3s %4d %3s %s",
+                 prefix, node->name, qualityStr, node->rssi, distStr, ageStr);
 
         lv_obj_t* item = lv_list_add_btn(_list, star, rowText);
         lv_obj_set_style_text_color(item, rssiColor(node->rssi), 0);

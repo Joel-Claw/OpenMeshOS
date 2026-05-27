@@ -190,40 +190,81 @@ bool Trackball::probeGPIO_V2() {
     return false;
 }
 
+int16_t Trackball::accelerate(int16_t raw) {
+    if (raw == 0) return 0;
+
+    int16_t absRaw = (raw > 0) ? raw : -raw;
+
+    // Below threshold: linear (1:1, minimum 1 px)
+    if (absRaw <= ACCEL_THRESHOLD) {
+        int16_t result = (absRaw < ACCEL_MIN) ? ACCEL_MIN : absRaw;
+        return (raw > 0) ? result : -result;
+    }
+
+    // Above threshold: quadratic curve with shift for smoother feel
+    // result = (raw >> shift)^2, capped at ACCEL_MAX
+    int16_t shifted = absRaw >> ACCEL_CURVE_SHIFT;
+    int16_t result = shifted * shifted;
+    if (result > ACCEL_MAX) result = ACCEL_MAX;
+    if (result < ACCEL_MIN) result = ACCEL_MIN;
+
+    return (raw > 0) ? result : -result;
+}
+
 void Trackball::tick() {
     switch (_type) {
         case TrackballType::GPIO_V1:
-        case TrackballType::GPIO_V2:
-            _dy += (!digitalRead(_pins.down) - !digitalRead(_pins.up));
-            _dx += (!digitalRead(_pins.right) - !digitalRead(_pins.left));
-            if (!digitalRead(_pins.press)) {
-                _pressed = true;
+        case TrackballType::GPIO_V2: {
+            // Accumulate raw deltas (before acceleration)
+            int16_t rawDy = (!digitalRead(_pins.down) - !digitalRead(_pins.up));
+            int16_t rawDx = (!digitalRead(_pins.right) - !digitalRead(_pins.left));
+            _rawDx += rawDx;
+            _rawDy += rawDy;
+
+            // Debounce press: must be held for PRESS_DEBOUNCE_TICKS consecutive ticks
+            bool pressNow = !digitalRead(_pins.press);
+            if (pressNow) {
+                _pressCounter++;
+                if (_pressCounter >= PRESS_DEBOUNCE_TICKS && !_pressRegistered) {
+                    _pressRegistered = true;
+                    _pressed = true;
+                }
+            } else {
+                _pressCounter = 0;
+                _pressRegistered = false;
             }
             break;
+        }
 
         case TrackballType::I2C_OPTICAL:
             if (_wire) {
                 // Read X and Y deltas from I2C sensor
-                // The AFBR S10 / similar optical sensors provide
-                // motion delta registers. Register map varies by sensor,
-                // but common pattern: register 0x02 = deltaX, 0x03 = deltaY
-                // We try reading 2 bytes starting at register 0x02
                 int8_t dX = readI2CDelta(*_wire, 0x02);
                 int8_t dY = readI2CDelta(*_wire, 0x03);
-                _dx += dX;
-                _dy += dY;
+                _rawDx += dX;
+                _rawDy += dY;
 
-                // Press detection: GPIO 44 (V1) or GPIO 0 (V2)
-                // The I2C sensor only provides motion, not press
-                // Check both press pins as fallback
+                // Press detection with debounce
+                bool pressNow = false;
                 pinMode(GPIO_NUM_44, INPUT_PULLUP);
                 if (!digitalRead(GPIO_NUM_44)) {
-                    _pressed = true;
+                    pressNow = true;
                 } else {
                     pinMode(GPIO_NUM_0, INPUT_PULLUP);
                     if (!digitalRead(GPIO_NUM_0)) {
+                        pressNow = true;
+                    }
+                }
+
+                if (pressNow) {
+                    _pressCounter++;
+                    if (_pressCounter >= PRESS_DEBOUNCE_TICKS && !_pressRegistered) {
+                        _pressRegistered = true;
                         _pressed = true;
                     }
+                } else {
+                    _pressCounter = 0;
+                    _pressRegistered = false;
                 }
             }
             break;
@@ -234,10 +275,11 @@ void Trackball::tick() {
 }
 
 void Trackball::consumeDelta(int16_t& dx, int16_t& dy) {
-    dx = _dx;
-    dy = _dy;
-    _dx = 0;
-    _dy = 0;
+    // Apply acceleration curve to raw deltas before handing to consumer
+    dx = accelerate(_rawDx);
+    dy = accelerate(_rawDy);
+    _rawDx = 0;
+    _rawDy = 0;
 }
 
 bool Trackball::consumePress() {
