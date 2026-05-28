@@ -4,6 +4,22 @@
 // MeshCore chat layer for OpenMeshOS.  Extends BaseChatMesh to provide
 // secure messaging, contact management, and channel support.
 // Bridges MeshCore protocol events into the OpenMeshOS UI.
+//
+// NOTE: This is an alternative higher-level mesh integration.
+// The current MeshService uses OpenMesh (Mesh subclass) with manual
+// packet handling via MessageBus. OpenMeshChat uses BaseChatMesh
+// which adds: contact discovery, group channels, DM with ACKs,
+// and identity management on top of raw Mesh.
+//
+// To switch to OpenMeshChat, MeshService would need to be refactored
+// to use this class instead of OpenMesh. Benefits:
+//   - Automatic contact discovery and persistence
+//   - Group channel support with PSK encryption
+//   - Direct message ACKs and timeout handling
+//   - Cleaner separation: chat logic here, UI in screens
+//
+// This code compiles but is NOT YET INTEGRATED into the main build.
+// It will be used when we upgrade from raw Mesh to chat-level MeshCore.
 
 #pragma once
 

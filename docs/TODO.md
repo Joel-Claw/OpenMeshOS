@@ -38,6 +38,14 @@
 - [x] Create `TDeckBoard` class implementing `mesh::MainBoard`
   - [x] `getBattMilliVolts()` — ADC on GPIO1
   - [x] `getMCUTemperature()` — ESP32 internal temp
+
+## OpenMeshChat (Future Upgrade Path)
+
+- [x] OpenMeshChat class created (BaseChatMesh subclass)
+- [ ] Refactor MeshService to use OpenMeshChat instead of OpenMesh (Mesh subclass)
+- [ ] Benefits: automatic contact discovery, group channels with PSK, DM ACKs
+- [ ] Requires: MessageBus adaptation, UI callback migration
+- [ ] See src/mesh/OpenMeshChat.h for full integration notes
   - [x] `reboot()` — ESP.restart()
   - [x] `getResetReason()` — esp_reset_reason()
   - [x] `getManufacturerName()` — return "LilyGo"
