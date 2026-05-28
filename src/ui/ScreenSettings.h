@@ -26,6 +26,7 @@ public:
     static void showExportImport();
     static void showAbout();
     static void showOTAUpdate();
+    static void showWhitelist();
 
     // State (public for static callback access)
     static lv_obj_t* _screen;

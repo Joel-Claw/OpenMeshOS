@@ -24,6 +24,7 @@
 #include "ScreenScanner.h"
 #include "Theme.h"
 #include "../mesh/MeshService.h"
+#include "../mesh/NodeTracker.h"
 #include "../mesh/BLECompanion.h"
 #include "../mesh/TDeckBoard.h"
 #include "../hardware/Board.h"
@@ -68,6 +69,10 @@ static void about_cb(lv_event_t* e) {
 
 static void scanner_cb(lv_event_t* e) {
     oms::ui::ScreenScanner::create();
+}
+
+static void whitelist_cb(lv_event_t* e) {
+    ScreenSettings::showWhitelist();
 }
 
 static void ota_cb(lv_event_t* e) {
@@ -142,6 +147,10 @@ void ScreenSettings::create() {
     item = lv_list_add_btn(_menuList, LV_SYMBOL_WIFI, "Node Scanner");
     lv_obj_set_style_text_color(item, theme::GREEN, 0);
     lv_obj_add_event_cb(item, scanner_cb, LV_EVENT_CLICKED, nullptr);
+
+    item = lv_list_add_btn(_menuList, LV_SYMBOL_OK, "Whitelist");
+    lv_obj_set_style_text_color(item, theme::ACCENT, 0);
+    lv_obj_add_event_cb(item, whitelist_cb, LV_EVENT_CLICKED, nullptr);
 
     item = lv_list_add_btn(_menuList, LV_SYMBOL_UPLOAD, "OTA Update");
     lv_obj_set_style_text_color(item, theme::TEXT, 0);
@@ -662,6 +671,86 @@ void ScreenSettings::showOTAUpdate() {
     // Warning
     item = lv_list_add_btn(list, LV_SYMBOL_WARNING, "Do not power off during update!");
     lv_obj_set_style_text_color(item, theme::ORANGE, 0);
+}
+
+// ── Whitelist Management ───────────────────────────────────────────
+void ScreenSettings::showWhitelist() {
+    OMS_LOG("UI", "Settings: whitelist");
+    lv_obj_t* list = create_sub_page("Whitelist");
+
+    NodeTracker& tracker = NodeTracker::instance();
+    size_t total = tracker.count();
+    size_t wlCount = tracker.countWhitelisted();
+
+    // Count display
+    char headerBuf[48];
+    snprintf(headerBuf, sizeof(headerBuf), "%zu of %zu nodes whitelisted", wlCount, total);
+    lv_obj_t* item = lv_list_add_btn(list, nullptr, headerBuf);
+    lv_obj_set_style_text_color(item, theme::TEXT_MUTED, 0);
+    lv_obj_set_style_text_font(item, &lv_font_montserrat_10, 0);
+
+    if (wlCount == 0) {
+        item = lv_list_add_btn(list, nullptr, "No whitelisted nodes.");
+        lv_obj_set_style_text_color(item, theme::TEXT_MUTED, 0);
+
+        item = lv_list_add_btn(list, nullptr, "Long-press a node in");
+        lv_obj_set_style_text_color(item, theme::TEXT_MUTED, 0);
+        lv_obj_set_style_text_font(item, &lv_font_montserrat_10, 0);
+        item = lv_list_add_btn(list, nullptr, "Node Scanner to add.");
+        lv_obj_set_style_text_color(item, theme::TEXT_MUTED, 0);
+        lv_obj_set_style_text_font(item, &lv_font_montserrat_10, 0);
+        return;
+    }
+
+    // List each whitelisted node with a remove button
+    for (size_t i = 0; i < total; i++) {
+        const TrackedNode* node = tracker.get(i);
+        if (!node || !node->whitelisted) continue;
+
+        const char* typeStr = "??";
+        switch (node->type) {
+            case NODE_TYPE_CHAT:     typeStr = "CH"; break;
+            case NODE_TYPE_REPEATER: typeStr = "RP"; break;
+            case NODE_TYPE_ROOM:     typeStr = "RM"; break;
+            case NODE_TYPE_SENSOR:   typeStr = "SE"; break;
+        }
+
+        char rowText[64];
+        snprintf(rowText, sizeof(rowText), "%s %s", typeStr, node->name);
+
+        // Click removes from whitelist
+        item = lv_list_add_btn(list, LV_SYMBOL_OK, rowText);
+        lv_obj_set_style_text_color(item, theme::GREEN, 0);
+
+        // User data carries the index
+        lv_obj_add_event_cb(item, [](lv_event_t* e) {
+            size_t idx = (size_t)(uintptr_t)lv_event_get_user_data(e);
+            NodeTracker::instance().toggleWhitelist(idx);  // toggle off + save
+            OMS_LOG("UI", "Removed node %zu from whitelist", idx);
+            // Refresh the whitelist page
+            ScreenSettings::showWhitelist();
+        }, LV_EVENT_CLICKED, (void*)(uintptr_t)i);
+    }
+
+    // Clear all button
+    item = lv_list_add_btn(list, LV_SYMBOL_TRASH, "Clear all");
+    lv_obj_set_style_text_color(item, theme::RED, 0);
+    lv_obj_add_event_cb(item, [](lv_event_t* e) {
+        // Remove whitelist from all tracked nodes
+        NodeTracker& t = NodeTracker::instance();
+        for (size_t i = 0; i < t.count(); i++) {
+            const TrackedNode* n = t.get(i);
+            if (n && n->whitelisted) {
+                t.toggleWhitelist(i);  // toggle off + save each
+            }
+        }
+        OMS_LOG("UI", "Whitelist cleared");
+        ScreenSettings::showWhitelist();
+    }, LV_EVENT_CLICKED, nullptr);
+
+    item = lv_list_add_btn(list, nullptr, "Tap a node to remove.");
+    lv_obj_set_style_text_color(item, theme::TEXT_MUTED, 0);
+    lv_obj_set_style_text_font(item, &lv_font_montserrat_10, 0);
 }
 
 }}  // namespace oms::ui

@@ -94,11 +94,12 @@ Goal: Full settings, terminal, and polish.
   - [x] ScreenScanner: LVGL UI showing discovered nodes, type, RSSI, distance
   - [x] Haversine distance calculation from GPS
   - [x] Whitelist toggle (long-press)
+  - [x] Whitelist persistence (SPIFFS /whitelist.bin)
   - [x] Settings menu entry (Node Scanner)
   - [ ] Test: verify node list updates from MeshCore adverts
   - [ ] Discover repeaters on the mesh
   - [x] Show signal strength, distance, uptime — quality column (+++/++/+/-), age (now/Xs/Xm/Xh), distance (m/km)
-  - [ ] Whitelist management
+  - [ ] Whitelist management UI (add/remove from settings)
 - [x] Terminal screen
   - [x] Full MeshCore CLI
   - [x] Command history (up/down arrows)
