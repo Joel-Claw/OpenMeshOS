@@ -2,11 +2,16 @@
 // Copyright 2026 Joel Claw & contributors — WTFPL v2
 //
 // Implementation of mesh node tracker. Called from MeshCore advert callback.
+// Whitelist is persisted to SPIFFS (/whitelist.bin) on toggle and
+// loaded on boot.  File format: 32 bytes per entry (raw pub_key).
 
 #include "NodeTracker.h"
 #include "../utils/Log.h"
+#include <SPIFFS.h>
 
 namespace oms {
+
+static const char* WHITELIST_PATH = "/whitelist.bin";
 
 void NodeTracker::onAdvert(const uint8_t pub_key[32],
                             uint8_t adv_type,
@@ -65,12 +70,101 @@ void NodeTracker::onAdvert(const uint8_t pub_key[32],
         node.rssi = rssi;
         node.lastSeenMs = millis();
         node.firstSeenMs = millis();
-        node.whitelisted = false;
+        node.whitelisted = isWhitelistedKey(pub_key);  // check loaded whitelist
         _count++;
 
-        OMS_LOG("Mesh", "New node: %s (type=%d, rssi=%d)",
-                 node.name, adv_type, rssi);
+        OMS_LOG("Mesh", "New node: %s (type=%d, rssi=%d, wl=%s)",
+                 node.name, adv_type, rssi, node.whitelisted ? "yes" : "no");
     }
+}
+
+// ── Whitelist persistence ───────────────────────────────────────────
+
+bool NodeTracker::isWhitelistedKey(const uint8_t pub_key[32]) const {
+    for (size_t i = 0; i < _whitelistKeyCount; i++) {
+        if (memcmp(_whitelistKeys[i], pub_key, 32) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void NodeTracker::loadWhitelist() {
+    _whitelistKeyCount = 0;
+
+    if (!SPIFFS.exists(WHITELIST_PATH)) {
+        OMS_LOG("Mesh", "No whitelist file");
+        return;
+    }
+
+    File f = SPIFFS.open(WHITELIST_PATH, "r");
+    if (!f) {
+        OMS_LOG("Mesh", "Failed to open whitelist");
+        return;
+    }
+
+    size_t fileSize = f.size();
+    size_t entryCount = fileSize / 32;
+
+    if (entryCount > MAX_WHITELIST_KEYS) {
+        entryCount = MAX_WHITELIST_KEYS;
+    }
+
+    for (size_t i = 0; i < entryCount; i++) {
+        if (f.read(_whitelistKeys[i], 32) != 32) break;
+        _whitelistKeyCount++;
+    }
+
+    f.close();
+    OMS_LOG("Mesh", "Loaded %zu whitelisted keys", _whitelistKeyCount);
+}
+
+void NodeTracker::saveWhitelist() {
+    // Collect all currently whitelisted keys from the tracker
+    uint8_t keys[MAX_WHITELIST_KEYS][32];
+    size_t count = 0;
+
+    for (size_t i = 0; i < _count && count < MAX_WHITELIST_KEYS; i++) {
+        if (_nodes[i].whitelisted) {
+            memcpy(keys[count], _nodes[i].pub_key, 32);
+            count++;
+        }
+    }
+
+    // Also include any pre-loaded whitelist keys that aren't in the tracker yet
+    for (size_t i = 0; i < _whitelistKeyCount && count < MAX_WHITELIST_KEYS; i++) {
+        bool alreadyIncluded = false;
+        for (size_t j = 0; j < count; j++) {
+            if (memcmp(keys[j], _whitelistKeys[i], 32) == 0) {
+                alreadyIncluded = true;
+                break;
+            }
+        }
+        if (!alreadyIncluded) {
+            memcpy(keys[count], _whitelistKeys[i], 32);
+            count++;
+        }
+    }
+
+    File f = SPIFFS.open(WHITELIST_PATH, "w");
+    if (!f) {
+        OMS_LOG("Mesh", "Failed to save whitelist");
+        return;
+    }
+
+    for (size_t i = 0; i < count; i++) {
+        f.write(keys[i], 32);
+    }
+
+    f.close();
+
+    // Update the in-memory whitelist keys
+    _whitelistKeyCount = count;
+    for (size_t i = 0; i < count; i++) {
+        memcpy(_whitelistKeys[i], keys[i], 32);
+    }
+
+    OMS_LOG("Mesh", "Saved %zu whitelisted keys", count);
 }
 
 }  // namespace oms

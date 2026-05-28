@@ -4,6 +4,9 @@
 // Tracks mesh nodes discovered via advertisements.
 // Populated by OpenMesh::onAdvertRecv(), consumed by ScreenScanner.
 // Fixed-size array to avoid dynamic allocation on ESP32-S3.
+//
+// Whitelist is persisted to SPIFFS (/whitelist.bin) on toggle
+// and loaded on boot.  File format: 32 bytes per entry (raw pub_key).
 
 #pragma once
 
@@ -40,7 +43,7 @@ struct TrackedNode {
 /// single consumer (UI). No mutex needed since both run on main thread.
 class NodeTracker {
 public:
-    NodeTracker() : _count(0), _selfAdvertCount(0) {}
+    NodeTracker() : _count(0), _selfAdvertCount(0), _whitelistKeyCount(0) {}
 
     /// Called from OpenMesh::onAdvertRecv() when a node advertises.
     /// Updates existing entry or adds new one. Evicts oldest if full.
@@ -62,10 +65,11 @@ public:
     /// Number of adverts received from our own node (self-adverts are skipped)
     uint32_t selfAdvertCount() const { return _selfAdvertCount; }
 
-    /// Toggle whitelist on a node by index
+    /// Toggle whitelist on a node by index and persist to SPIFFS
     void toggleWhitelist(size_t idx) {
         if (idx < _count) {
             _nodes[idx].whitelisted = !_nodes[idx].whitelisted;
+            saveWhitelist();
         }
     }
 
@@ -103,6 +107,12 @@ public:
     /// Clear all tracked nodes
     void clear() { _count = 0; }
 
+    /// Save whitelisted node keys to SPIFFS
+    void saveWhitelist();
+
+    /// Load whitelisted node keys from SPIFFS (call once at boot)
+    void loadWhitelist();
+
     /// Singleton instance
     static NodeTracker& instance() {
         static NodeTracker s_tracker;
@@ -113,6 +123,14 @@ private:
     TrackedNode _nodes[MAX_TRACKED_NODES];
     size_t      _count;
     uint32_t    _selfAdvertCount;
+
+    // Pre-loaded whitelist keys from SPIFFS (populated at boot before any adverts arrive)
+    static constexpr size_t MAX_WHITELIST_KEYS = 32;
+    uint8_t     _whitelistKeys[MAX_WHITELIST_KEYS][32];
+    size_t      _whitelistKeyCount;
+
+    /// Check if a public key is in the loaded whitelist
+    bool isWhitelistedKey(const uint8_t pub_key[32]) const;
 
     /// Find existing node by full public key. Returns index or -1.
     int findExisting(const uint8_t pub_key[32]) const {

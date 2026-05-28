@@ -10,6 +10,7 @@
 #include "hardware/KeyboardInput.h"
 #include "hardware/Notification.h"
 #include "mesh/MeshService.h"
+#include "mesh/NodeTracker.h"
 #include "mesh/BLECompanion.h"
 #include "ui/UIScreen.h"
 #include "ui/ScreenHome.h"
@@ -48,6 +49,9 @@ void setup() {
 
     // 2) Load persistent config from SPIFFS / SD
     oms::config::init();
+
+    // 2a) Load whitelist from SPIFFS (before mesh starts receiving adverts)
+    oms::NodeTracker::instance().loadWhitelist();
 
     // 2) Initialise board-level hardware (display, keyboard, trackball, LoRa, GPS)
     oms::Board::instance().init();
