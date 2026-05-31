@@ -77,6 +77,19 @@ private:
     BLECompanion& _parent;
 };
 
+// ── Firmware update write callback ─────────────────────────────────
+class BLECompanion::FirmwareWriteCallback : public BLECharacteristicCallbacks {
+public:
+    FirmwareWriteCallback(BLECompanion& parent) : _parent(parent) {}
+
+    void onWrite(BLECharacteristic* pChar) override {
+        _parent.handleFirmwareWrite(pChar);
+    }
+
+private:
+    BLECompanion& _parent;
+};
+
 // ── init ───────────────────────────────────────────────────────────
 void BLECompanion::init() {
     OMS_LOG("BLE", "Initialising BLE companion service");
@@ -161,6 +174,24 @@ void BLECompanion::init() {
         buildStatusPayload(statusBuf, statusLen);
         _statusChar->setValue(statusBuf, statusLen);
     }
+
+    // ── Firmware Update characteristic (BLE OTA) ───────────────────
+    // Write: companion app sends firmware chunks
+    //   First write (≤4 bytes): total firmware size as uint32_t
+    //   Subsequent writes: firmware binary data in chunks (up to 512 bytes)
+    //   Final write of 0 bytes or special command byte: end OTA
+    // Notify: device sends progress updates
+    //   Format: [1B step][4B current][4B total]
+    //   step: 1=started, 2=progress, 3=verifying, 4=complete, 0xFF=error
+    _fwUpdateChar = _service->createCharacteristic(
+        BLEUUID(UUID_FW_UPDATE),
+        BLECharacteristic::PROPERTY_WRITE |
+        BLECharacteristic::PROPERTY_NOTIFY
+    );
+    _fwUpdateChar->setAccessPermissions(ESP_GATT_PERM_WRITE_ENCRYPTED);
+    _fwUpdateChar->setCallbacks(new FirmwareWriteCallback(*this));
+    BLE2902* pFwCCCD = new BLE2902();
+    _fwUpdateChar->addDescriptor(pFwCCCD);
 
     // Start the service
     _service->start();
@@ -401,6 +432,120 @@ void BLECompanion::setEnabled(bool enabled) {
         _advertising = true;
         OMS_LOG("BLE", "Advertising restarted");
     }
+}
+
+// ── handleFirmwareWrite ────────────────────────────────────────────
+// BLE OTA protocol:
+//   1. Companion sends total size (4 bytes, uint32_t little-endian)
+//      - Device calls Update.begin(size)
+//   2. Companion sends firmware chunks (up to 512 bytes each)
+//      - Device calls Update.write() for each chunk
+//      - Device sends progress notifications after each chunk
+//   3. Companion sends a 1-byte command to finalize:
+//      - 0x00: end OTA (apply and reboot)
+//      - 0xFE: abort OTA
+void BLECompanion::handleFirmwareWrite(BLECharacteristic* pChar) {
+    std::string value = pChar->getValue();
+    size_t len = value.length();
+
+    if (len == 0) return;
+
+    const uint8_t* data = (const uint8_t*)value.c_str();
+
+    // ── Command byte ───────────────────────────────────────────────
+    if (len == 1) {
+        uint8_t cmd = data[0];
+        if (cmd == 0x00 && _otaInProgress) {
+            // End OTA: apply and reboot
+            OMS_LOG("BLE", "OTA end command, applying update");
+            if (Update.end(true)) {
+                _otaStep = 4;  // complete
+                notifyOtaProgress(_otaStep, _otaWritten, _otaTotalSize);
+                OMS_LOG("BLE", "OTA success! Rebooting in 2s");
+                delay(2000);
+                ESP.restart();
+            } else {
+                _otaStep = 0xFF;  // error
+                notifyOtaProgress(_otaStep, Update.getError(), _otaTotalSize);
+                OMS_LOG("BLE", "OTA end failed: error %u", Update.getError());
+                _otaInProgress = false;
+            }
+        } else if (cmd == 0xFE && _otaInProgress) {
+            // Abort OTA
+            OMS_LOG("BLE", "OTA aborted by companion");
+            Update.abort();
+            _otaInProgress = false;
+            _otaStep = 0;
+            notifyOtaProgress(0xFF, 0, 0);
+        }
+        return;
+    }
+
+    // ── First write: total size (4 bytes) ───────────────────────────
+    if (!_otaInProgress && len == 4) {
+        _otaTotalSize = data[0] | (data[1] << 8) | (data[2] << 16) | (data[3] << 24);
+
+        if (_otaTotalSize == 0 || _otaTotalSize > 6400000) {
+            OMS_LOG("BLE", "OTA: invalid size %u", (unsigned)_otaTotalSize);
+            notifyOtaProgress(0xFF, 0, _otaTotalSize);
+            return;
+        }
+
+        OMS_LOG("BLE", "OTA starting: %u bytes", (unsigned)_otaTotalSize);
+
+        if (!Update.begin(_otaTotalSize)) {
+            OMS_LOG("BLE", "OTA: not enough space");
+            notifyOtaProgress(0xFF, 0, _otaTotalSize);
+            return;
+        }
+
+        _otaInProgress = true;
+        _otaWritten = 0;
+        _otaStep = 1;
+        notifyOtaProgress(_otaStep, 0, _otaTotalSize);
+        return;
+    }
+
+    // ── Subsequent writes: firmware data chunks ─────────────────────
+    if (_otaInProgress) {
+        size_t written = Update.write(const_cast<uint8_t*>(data), len);
+        _otaWritten += written;
+        _otaStep = 2;  // data progress
+
+        // Send progress every chunk
+        notifyOtaProgress(_otaStep, _otaWritten, _otaTotalSize);
+
+        if (written != len) {
+            OMS_LOG("BLE", "OTA write error: wrote %u of %u", (unsigned)written, (unsigned)len);
+            _otaStep = 0xFF;
+            notifyOtaProgress(_otaStep, _otaWritten, _otaTotalSize);
+            Update.abort();
+            _otaInProgress = false;
+        }
+    }
+}
+
+// ── notifyOtaProgress ──────────────────────────────────────────────
+void BLECompanion::notifyOtaProgress(uint8_t step, uint32_t current, uint32_t total) {
+    if (!_fwUpdateChar || !_connected) return;
+
+    // Binary format: [1B step][4B current][4B total]
+    uint8_t buf[9];
+    buf[0] = step;
+    buf[1] = current & 0xFF;
+    buf[2] = (current >> 8) & 0xFF;
+    buf[3] = (current >> 16) & 0xFF;
+    buf[4] = (current >> 24) & 0xFF;
+    buf[5] = total & 0xFF;
+    buf[6] = (total >> 8) & 0xFF;
+    buf[7] = (total >> 16) & 0xFF;
+    buf[8] = (total >> 24) & 0xFF;
+
+    _fwUpdateChar->setValue(buf, sizeof(buf));
+    _fwUpdateChar->notify();
+
+    OMS_LOG("BLE", "OTA progress: step=%u current=%u total=%u",
+            step, (unsigned)current, (unsigned)total);
 }
 
 }  // namespace oms

@@ -23,15 +23,15 @@
 
 - [x] Detect I2C trackball variant (AFBR S10) vs GPIO variant
 - [x] Implement I2C trackball polling for affected models
-- [ ] Trackball down not working on some T-Deck models (I2C variant)
+- [x] Add I2C drift suppression and dead zone filter for AFBR S10 (fixes "scrolling itself down" bug, MeshCore #1469)
 - [ ] Test trackball on both hardware revisions
 
 ## Research Sources
 
-- [ ] Review Aurora firmware trackball implementation
+- [x] Review Aurora firmware trackball implementation
 - [ ] Review LilyGo official T-Deck examples
-- [ ] Review community firmware projects (beyond MeshOS)
-- [ ] Don't just copy MeshOS patterns - cross-reference multiple implementations
+- [x] Review community firmware projects (MeshCore #1469, #1424, Meshtastic #9440)
+- [x] Cross-reference: Meshtastic trackball revamp, LilyGo T-Deck #71
 
 ## MeshCore Integration
 
@@ -104,6 +104,7 @@
 
 - [x] Unit test: MapEngine coordinate conversion (lat/lng to/from tile) — 34 tests passing
 - [x] Unit test: Config save/load round-trip (SPIFFS mock)
+- [x] Unit test: SPIFFS stress test (rapid writes, interleaved, corrupt recovery, whitelist binary) — 213 tests passing
 - [ ] Integration test: SPIFFS read/write under load
 - [ ] Hardware test: keyboard scan produces expected keycodes
 - [ ] Hardware test: GPS NMEA sentences decode correctly

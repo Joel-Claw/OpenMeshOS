@@ -31,6 +31,7 @@
 #include <BLEServer.h>
 #include <BLEUtils.h>
 #include <BLE2902.h>
+#include <Update.h>
 #include "MessageBus.h"
 #include "../utils/Config.h"
 
@@ -72,8 +73,10 @@ private:
     /// Characteristic write callbacks
     class ConfigWriteCallback;
     class MessageWriteCallback;
+    class FirmwareWriteCallback;
     friend class ConfigWriteCallback;
     friend class MessageWriteCallback;
+    friend class FirmwareWriteCallback;
 
     /// Build device status payload (battery, RSSI, uptime, nodes, heap)
     void buildStatusPayload(uint8_t* buf, size_t& len);
@@ -84,6 +87,12 @@ private:
     /// Handle message write from phone (sends to mesh)
     void handleMessageWrite(BLECharacteristic* pChar);
 
+    /// Handle BLE OTA firmware chunk write
+    void handleFirmwareWrite(BLECharacteristic* pChar);
+
+    /// Send OTA progress notification to phone
+    void notifyOtaProgress(uint8_t step, uint32_t current, uint32_t total);
+
     // BLE objects
     BLEServer*       _server       = nullptr;
     BLEService*      _service      = nullptr;
@@ -92,10 +101,17 @@ private:
     BLECharacteristic* _msgInChar    = nullptr;
     BLECharacteristic* _msgOutChar   = nullptr;
     BLECharacteristic* _statusChar   = nullptr;
+    BLECharacteristic* _fwUpdateChar = nullptr;
 
     bool _connected = false;
     bool _enabled   = true;    // default on
     bool _advertising = false;
+
+    // OTA state
+    bool    _otaInProgress = false;
+    size_t  _otaWritten = 0;
+    size_t  _otaTotalSize = 0;
+    uint8_t _otaStep = 0;  // 0=idle, 1=started, 2=data, 3=finish, 0xFF=error
 
     // Device name for BLE advertising
     static constexpr const char* BLE_DEVICE_PREFIX = "OpenMesh-";

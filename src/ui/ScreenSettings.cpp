@@ -631,8 +631,11 @@ static void ota_start_sd_cb(lv_event_t* e) {
 }
 
 static void ota_start_ble_cb(lv_event_t* e) {
+    // BLE OTA is now supported via the companion app
+    // The companion app sends firmware size, then chunks, then end command
     if (s_otaStatusLabel)
-        lv_label_set_text(s_otaStatusLabel, "BLE OTA: not yet supported");
+        lv_label_set_text(s_otaStatusLabel, "Use companion app for BLE OTA");
+    OMS_LOG("UI", "BLE OTA: available via companion app");
 }
 
 void ScreenSettings::showOTAUpdate() {

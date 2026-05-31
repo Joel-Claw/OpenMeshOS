@@ -60,6 +60,27 @@ private:
     static constexpr int16_t ACCEL_CURVE_SHIFT = 1;  // divide raw by 2^N before squaring
     static constexpr int16_t ACCEL_MAX = 12;           // cap maximum delta per frame
 
+    // I2C optical sensor noise filtering:
+    // Some AFBR S10 sensors produce constant drift (e.g., always reporting
+    // small downward movement) even when the trackball is idle. This causes
+    // the "scrolling itself down" bug reported in MeshCore issue #1469.
+    // We apply two filters:
+    //   1. Dead zone: ignore deltas smaller than I2C_DEAD_ZONE
+    //   2. Drift suppression: if we see I2C_DRIFT_MAX consecutive ticks
+    //      with movement only in one direction (and no user press),
+    //      we suppress that axis until the user actively moves the other way.
+    static constexpr int16_t I2C_DEAD_ZONE = 1;          // ignore deltas with |value| <= this
+    static constexpr uint8_t  I2C_DRIFT_MAX = 20;        // consecutive same-direction ticks = drift
+    static constexpr uint8_t  I2C_DRIFT_SUPPRESS_TICKS = 10; // suppress drift axis for N ticks
+
+    // Drift state for I2C sensor
+    uint8_t  _driftCountX = 0;   // consecutive ticks with X movement
+    uint8_t  _driftCountY = 0;   // consecutive ticks with Y movement
+    int8_t   _driftDirX = 0;     // last drift direction for X: +1 or -1
+    int8_t   _driftDirY = 0;     // last drift direction for Y: +1 or -1
+    uint8_t  _driftSuppressX = 0; // ticks remaining to suppress X axis
+    uint8_t  _driftSuppressY = 0; // ticks remaining to suppress Y axis
+
     /// Apply acceleration curve to raw delta
     static int16_t accelerate(int16_t raw);
 

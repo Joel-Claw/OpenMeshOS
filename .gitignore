@@ -9,4 +9,6 @@ sdkconfig.old
 *.swp
 *.swo
 *~
-.DS_Storetest_map_engine
+.DS_Store
+test_map_engine
+

@@ -241,10 +241,66 @@ void Trackball::tick() {
                 // Read X and Y deltas from I2C sensor
                 int8_t dX = readI2CDelta(*_wire, 0x02);
                 int8_t dY = readI2CDelta(*_wire, 0x03);
+
+                // Apply dead zone filter: ignore tiny deltas (sensor noise)
+                // This fixes the "scrolling itself down" bug (MeshCore #1469)
+                // where the AFBR S10 constantly reports small downward drift.
+                if (dX > -I2C_DEAD_ZONE && dX < I2C_DEAD_ZONE) dX = 0;
+                if (dY > -I2C_DEAD_ZONE && dY < I2C_DEAD_ZONE) dY = 0;
+
+                // Drift suppression: if the sensor has been reporting movement
+                // in the same direction for many consecutive ticks with no
+                // user interaction (no press), it is likely sensor drift.
+                // Suppress that axis until the user moves the other way.
+                if (dX != 0) {
+                    int8_t dir = (dX > 0) ? 1 : -1;
+                    if (_driftDirX == dir) {
+                        _driftCountX++;
+                    } else {
+                        _driftCountX = 1;
+                        _driftDirX = dir;
+                    }
+                } else {
+                    // No movement: if we were suppressing, keep suppressing
+                    // for a few more ticks (user may be pausing briefly)
+                    if (_driftSuppressX > 0) {
+                        _driftSuppressX--;
+                    }
+                }
+
+                if (dY != 0) {
+                    int8_t dir = (dY > 0) ? 1 : -1;
+                    if (_driftDirY == dir) {
+                        _driftCountY++;
+                    } else {
+                        _driftCountY = 1;
+                        _driftDirY = dir;
+                    }
+                } else {
+                    if (_driftSuppressY > 0) {
+                        _driftSuppressY--;
+                    }
+                }
+
+                // If drift threshold reached on an axis, start suppressing
+                if (_driftCountX >= I2C_DRIFT_MAX) {
+                    _driftSuppressX = I2C_DRIFT_SUPPRESS_TICKS;
+                    _driftCountX = 0;
+                }
+                if (_driftCountY >= I2C_DRIFT_MAX) {
+                    _driftSuppressY = I2C_DRIFT_SUPPRESS_TICKS;
+                    _driftCountY = 0;
+                }
+
+                // Suppress drift axis movement
+                if (_driftSuppressX > 0) dX = 0;
+                if (_driftSuppressY > 0) dY = 0;
+
                 _rawDx += dX;
                 _rawDy += dY;
 
                 // Press detection with debounce
+                // Try GPIO 44 first (V1 press), then GPIO 0 (V2 press / BOOT)
                 bool pressNow = false;
                 pinMode(GPIO_NUM_44, INPUT_PULLUP);
                 if (!digitalRead(GPIO_NUM_44)) {
@@ -261,6 +317,11 @@ void Trackball::tick() {
                     if (_pressCounter >= PRESS_DEBOUNCE_TICKS && !_pressRegistered) {
                         _pressRegistered = true;
                         _pressed = true;
+                        // User is actively pressing: reset drift counters
+                        _driftCountX = 0;
+                        _driftCountY = 0;
+                        _driftSuppressX = 0;
+                        _driftSuppressY = 0;
                     }
                 } else {
                     _pressCounter = 0;
