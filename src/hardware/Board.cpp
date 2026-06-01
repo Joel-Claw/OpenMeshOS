@@ -69,6 +69,9 @@ void Board::init() {
     // Keyboard I2C
     Wire.begin(PIN_KB_SDA, PIN_KB_SCL);
 
+    // Initialise BBQ10KB keyboard driver
+    _keyboard.init();
+
     // Trackball GPIOs
     pinMode(PIN_TRACKBALL_UP,    INPUT_PULLUP);
     pinMode(PIN_TRACKBALL_DOWN,  INPUT_PULLUP);
@@ -99,10 +102,14 @@ void Board::tick() {
 
     // GPS serial read (if present)
 #ifdef OMS_HAS_BUILTIN_GPS
-    while (_gpsSerial.available()) {
+    while (_gpsSerial.available())
+    {
         _gps.encode(_gpsSerial.read());
     }
 #endif
+
+    // Keyboard poll — reads FIFO from BBQ10KB
+    _keyboard.poll();
 
     // Battery ADC (T-Deck uses voltage divider on IO4 or IO1 depending on rev)
     // TODO: implement proper ADC read after pin validation

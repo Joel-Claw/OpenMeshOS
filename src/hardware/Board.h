@@ -10,6 +10,7 @@
 #ifdef OMS_HAS_BUILTIN_GPS
 #include <TinyGPSPlus.h>
 #endif
+#include "Keyboard.h"
 
 namespace oms {
 
@@ -24,6 +25,9 @@ public:
     bool consumeTrackballPress();
     void consumeTrackballDelta(int16_t &dx, int16_t &dy);
 
+    // Keyboard
+    Keyboard& keyboard() { return _keyboard; }
+
     // GPS
     bool hasGPSFix() const;
     float gpsLat() const;
@@ -36,6 +40,9 @@ public:
 
 private:
     bool _initialized = false;
+
+    // Keyboard driver
+    Keyboard _keyboard;
 
     // Trackball accumulator
     int16_t _trackballX = 0;

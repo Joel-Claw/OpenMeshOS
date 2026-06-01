@@ -2,12 +2,14 @@
 // Copyright 2026 Joel Claw & contributors — WTFPL v2
 //
 // Initialises LVGL, the TFT_eSPI display driver, and loads the
-// home screen.  The tick function drives LVGL's task handler.
+// home screen.  The tick function drives LVGL's task handler and
+// feeds keyboard events into LVGL's input system.
 
 #include "UIScreen.h"
 #include "ScreenHome.h"
 #include "Theme.h"
 #include "../hardware/Board.h"
+#include "../hardware/Keyboard.h"
 #include "../utils/Log.h"
 
 #include <lvgl.h>
@@ -19,24 +21,72 @@ static TFT_eSPI tft = TFT_eSPI();
 static lv_display_t* disp = nullptr;
 static lv_color_t* buf1 = nullptr;
 
-// LVGL input device (trackball as encoder)
-static lv_indev_t* enc_indev = nullptr;
+// LVGL input devices
+static lv_indev_t* enc_indev = nullptr;  // trackball (encoder)
+static lv_indev_t* kb_indev = nullptr;    // BBQ10KB physical keyboard
 
-// Encoder state for LVGL
+// Encoder state for LVGL (trackball)
 static int16_t enc_diff = 0;
 static bool enc_pressed = false;
 
-// LVGL encoder read callback
-static void encoder_read(lv_indev_t* indev, lv_indev_data_t* data) {
+// Encoder read callback (trackball)
+static void encoder_read(lv_indev_t* indev, lv_indev_data_t* data)
+{
     data->enc_diff = enc_diff;
     data->state = enc_pressed ? LV_INDEV_STATE_PRESSED : LV_INDEV_STATE_RELEASED;
     enc_diff = 0;
     enc_pressed = false;
 }
 
+// Keyboard read callback for LVGL
+// LVGL calls this every tick to check for key presses.
+// We drain the Keyboard event buffer and feed printable characters
+// and special keys into LVGL's input system.
+static void keyboard_read(lv_indev_t* indev, lv_indev_data_t* data)
+{
+    static bool key_sent = false;
+
+    // If we already sent a key this tick, tell LVGL no new key
+    if (key_sent)
+    {
+        data->key = 0;
+        data->state = LV_INDEV_STATE_RELEASED;
+        key_sent = false;
+        return;
+    }
+
+    auto& kb = oms::Keyboard::instance();
+    oms::Keyboard::KeyEvent ev;
+    if (!kb.nextEvent(ev))
+    {
+        data->key = 0;
+        data->state = LV_INDEV_STATE_RELEASED;
+        return;
+    }
+
+    // Map BBQ10KB key codes to LVGL key codes
+    uint32_t lv_key = 0;
+    switch (ev.key)
+    {
+        case '\n':  lv_key = LV_KEY_ENTER;     break;
+        case 0x08:  lv_key = LV_KEY_BACKSPACE;  break;  // backspace
+        case '\t':  lv_key = LV_KEY_NEXT;       break;  // tab → next focus
+        case 0x1B:  lv_key = LV_KEY_ESC;        break;  // modifier as ESC
+        case 0x1A:  /* Alt modifier — skip */    return;
+        case 0x1C:  /* Right Shift — skip */     return;
+        case 0x1D:  /* Sym modifier — skip */    return;
+        default:    lv_key = (uint32_t)ev.key;   break;  // printable ASCII
+    }
+
+    data->key = lv_key;
+    data->state = LV_INDEV_STATE_PRESSED;
+    key_sent = true;
+}
+
 namespace oms { namespace ui {
 
-void init() {
+void init()
+{
     OMS_LOG("UI", "Initialising display");
 
     // TFT init (TFT_eSPI uses build flags from platformio.ini)
@@ -49,7 +99,8 @@ void init() {
 
     // Allocate display buffer in PSRAM
     buf1 = (lv_color_t*)ps_malloc(OMS_SCREEN_W * 40 * sizeof(lv_color_t));
-    if (!buf1) {
+    if (!buf1)
+    {
         OMS_LOG("UI", "FATAL: cannot allocate display buffer in PSRAM");
         return;
     }
@@ -64,16 +115,21 @@ void init() {
     });
     lv_display_set_buffers(disp, buf1, nullptr, OMS_SCREEN_W * 40 * sizeof(lv_color_t), LV_DISPLAY_RENDER_MODE_PARTIAL);
 
-    // Input: trackball → LVGL encoder
+    // Create default group for encoder + keyboard navigation
+    lv_group_t* g = lv_group_create();
+    lv_group_set_default(g);
+
+    // Input: trackball → LVGL encoder (for navigation)
     enc_indev = lv_indev_create();
     lv_indev_set_type(enc_indev, LV_INDEV_TYPE_ENCODER);
     lv_indev_set_read_cb(enc_indev, encoder_read);
-    lv_indev_set_group(enc_indev, lv_group_get_default());
-
-    // Create default group for encoder navigation
-    lv_group_t* g = lv_group_create();
-    lv_group_set_default(g);
     lv_indev_set_group(enc_indev, g);
+
+    // Input: BBQ10KB keyboard → LVGL keypad (for text input)
+    kb_indev = lv_indev_create();
+    lv_indev_set_type(kb_indev, LV_INDEV_TYPE_KEYPAD);
+    lv_indev_set_read_cb(kb_indev, keyboard_read);
+    lv_indev_set_group(kb_indev, g);
 
     // Apply theme
     theme::apply(disp);
@@ -84,7 +140,8 @@ void init() {
     OMS_LOG("UI", "Display ready (%dx%d)", OMS_SCREEN_W, OMS_SCREEN_H);
 }
 
-void tick() {
+void tick()
+{
     // Feed trackball input into encoder state
     auto& board = Board::instance();
     int16_t dx, dy;
@@ -93,10 +150,11 @@ void tick() {
     // Trackball vertical = encoder rotation
     if (dy > 0) enc_diff += dy;
     if (dy < 0) enc_diff += dy;  // negative = scroll up
-    if (dx != 0) enc_diff += dx; // horizontal also useful
+    if (dx != 0) enc_diff += dx;  // horizontal also useful
 
     // Trackball press = encoder click
-    if (board.consumeTrackballPress()) {
+    if (board.consumeTrackballPress())
+    {
         enc_pressed = true;
     }
 
