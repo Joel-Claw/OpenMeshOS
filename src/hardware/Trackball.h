@@ -2,12 +2,18 @@
 // Copyright 2026 Joel Claw & contributors — WTFPL v2
 //
 // Runtime trackball detection and abstraction.
-// T-Deck hardware has three known variants:
-//   1. GPIO trackball (original): pins 3,15,21,43,44
-//   2. GPIO trackball (newer):    pins 3,15,1,2,0
-//   3. I2C optical sensor at 0x4A (AFBR S10 or similar)
+// T-Deck hardware has two known trackball variants:
+//   1. GPIO trackball (all known boards): pins 3,15,1,2,0
+//      Confirmed by Meshtastic variant.h and LilyGo utilities.h (TBOX_G01-G04).
+//      GPIO 1=LEFT, 2=RIGHT, 0=PRESS (also BOOT button).
+//   2. I2C optical sensor at 0x4A (AFBR S10 or similar)
 //
-// We detect at startup which variant is present and switch behavior.
+// NOTE: Earlier code defined a "V1" variant with pins 21,43,44. This was WRONG.
+// Those pins are: GPIO 21 = ES7210 mic LRCK, GPIO 43 = GPS TX, GPIO 44 = GPS RX.
+// No known T-Deck hardware uses those pins for trackball.
+// The GPIO trackball config (3,15,1,2,0) is valid for ALL hardware revisions.
+//
+// We detect at startup which variant (GPIO vs I2C) is present and switch behavior.
 
 #pragma once
 
@@ -18,8 +24,9 @@ namespace oms {
 
 enum class TrackballType : uint8_t {
     NONE = 0,       // No trackball detected
-    GPIO_V1 = 1,    // Original T-Deck: UP=3, DOWN=15, LEFT=21, RIGHT=43, PRESS=44
-    GPIO_V2 = 2,    // Newer T-Deck:  UP=3, DOWN=15, LEFT=1,  RIGHT=2,  PRESS=0
+    GPIO_V1 = 1,    // DEPRECATED — was wrong (pins 21,43,44 are mic/GPS). Do not use.
+    GPIO_STD = 2,   // All known boards: UP=3, DOWN=15, LEFT=1, RIGHT=2, PRESS=0
+    GPIO_V2 = 2,    // Alias: same as GPIO_STD, for backward compat
     I2C_OPTICAL = 3 // I2C optical sensor at 0x4A
 };
 
@@ -93,8 +100,14 @@ private:
         gpio_num_t press;
     };
 
-    static const GPIOPins PINS_V1;
-    static const GPIOPins PINS_V2;
+    // GPIO trackball (all known hardware revisions)
+    // Confirmed by Meshtastic variant.h and LilyGo utilities.h TBOX_G01-G04
+    // UP=3 (G01), DOWN=15 (G03), LEFT=1 (G04), RIGHT=2 (G02), PRESS=0 (BOOT)
+    static const GPIOPins PINS_GPIO;
+
+    // Legacy aliases for backward compatibility
+    static const GPIOPins PINS_V1;  // DEPRECATED: same as PINS_GPIO
+    static const GPIOPins PINS_V2;  // same as PINS_GPIO
 
     static constexpr uint8_t I2C_ADDR = 0x4A;
 
@@ -102,8 +115,9 @@ private:
 
     // Detection helpers
     bool probeI2C(TwoWire& wire);
-    bool probeGPIO_V1();
-    bool probeGPIO_V2();
+    bool probeGPIO();
+    bool probeGPIO_V1();  // legacy alias for probeGPIO
+    bool probeGPIO_V2();  // legacy alias for probeGPIO
     void configureGPIOPins();
 
     // I2C read helper: returns signed delta byte

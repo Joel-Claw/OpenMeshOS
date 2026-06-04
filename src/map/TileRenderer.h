@@ -104,7 +104,7 @@ private:
 
     // SD card state
     bool _sdPresent = false;
-    static constexpr uint8_t SD_CS_PIN = 11;   // T-Deck SD card CS
+    static constexpr uint8_t SD_CS_PIN = 39;   // T-Deck SD card CS (official: BOARD_SDCARD_CS=39)
 
     // Tile cache (PSRAM-backed LRU)
     static constexpr int CACHE_SIZE = 9;  // 3x3 grid (most common view)

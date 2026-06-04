@@ -44,11 +44,15 @@
 #include <helpers/radiolib/CustomSX1262Wrapper.h>
 #include <helpers/radiolib/SX126xReset.h>
 
-// T-Deck SX1262 pin config (from LilyGo schematic)
+// T-Deck SX1262 pin config — cross-referenced with official LilyGo T-Deck utilities.h
+// https://github.com/Xinyuan-LilyGO/T-Deck/blob/master/examples/UnitTest/utilities.h
 #define SX1262_CS    9
-#define SX1262_DIO1  14
-#define SX1262_RST   12
+#define SX1262_DIO1  45
+#define SX1262_RST   17
 #define SX1262_BUSY  13
+#define SX1262_SCK   40
+#define SX1262_MISO  38
+#define SX1262_MOSI  41
 
 namespace oms {
 
@@ -118,7 +122,7 @@ void MeshService::init() {
     // ── SPI and Radio ────────────────────────────────────────────
     // Use HSPI for LoRa (VSPI is used by TFT)
     s_loraSpi = new SPIClass(HSPI);
-    s_loraSpi->begin(SX1262_CS, SX1262_DIO1, -1, SX1262_RST);
+    s_loraSpi->begin(SX1262_SCK, SX1262_MISO, SX1262_MOSI, SX1262_CS);
 
     // Create CustomSX1262 with T-Deck pin config
     auto* mod = new Module(SX1262_CS, SX1262_DIO1, SX1262_RST, SX1262_BUSY, *s_loraSpi);

@@ -15,7 +15,7 @@
 namespace oms {
 
 // ── Constants ───────────────────────────────────────────────────────
-static constexpr uint8_t SD_CS_PIN = 11;   // T-Deck SD card CS
+static constexpr uint8_t SD_CS_PIN = 39;   // T-Deck SD card CS (official: BOARD_SDCARD_CS=39)
 static constexpr int TILE_SIZE = 256;        // standard OSM tile size
 
 // ── Coordinate math ─────────────────────────────────────────────────

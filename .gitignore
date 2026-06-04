@@ -12,3 +12,5 @@ sdkconfig.old
 .DS_Store
 test_map_engine
 
+test_gps_nmea
+test_spiffs_stress

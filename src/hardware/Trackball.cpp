@@ -3,50 +3,46 @@
 //
 // Runtime trackball detection and driver.
 // Strategy:
-//   1. Probe I2C bus for optical sensor at 0x4A
-//   2. Try GPIO V2 pins (newer boards: 1,2,0 for L,R,Click)
-//   3. Try GPIO V1 pins (original boards: 21,43,44 for L,R,Click)
-//   4. Fall back to NONE
+//   1. Probe I2C bus for optical sensor at 0x4A (AFBR S10 or similar)
+//   2. Try GPIO trackball (all known boards: pins 3,15,1,2,0)
+//   3. Fall back to NONE
 //
-// Detection heuristic:
-//   - I2C: attempt to read a register. If we get an ACK, sensor present.
-//   - GPIO: set pullups, read state. On V2 boards, GPIO 0 is boot pin
-//     so it reads LOW during normal operation. We detect V2 by checking
-//     if the V1-exclusive pins (21, 43, 44) float HIGH with pullup
-//     while V2-exclusive pins (1, 2, 0) show activity.
+// NOTE: Earlier code distinguished "V1" (pins 21,43,44) and "V2" (pins 1,2,0)
+// trackball variants. This was WRONG: GPIO 21 is ES7210 mic LRCK, GPIO 43 is
+// GPS TX, and GPIO 44 is GPS RX per the official LilyGo utilities.h. No known
+// T-Deck hardware uses those pins for trackball. All GPIO trackballs use
+// pins 3,15,1,2,0 (confirmed by Meshtastic variant.h and LilyGo TBOX_G01-G04).
 //
-// In practice, the I2C check is most reliable. GPIO variant detection
-// uses a simpler approach: configure both pin sets with pullups, then
-// check which set the user is actually moving. For the initial release,
-// we default to V1 if I2C is not found, and allow override via config.
+// I2C detection is most reliable for optical sensors. GPIO detection uses
+// pullup probing: if the GPIO trackball pins read HIGH with pullup, they
+// are connected. We default to GPIO if I2C is not found.
 
 #include "Trackball.h"
+#include "Board.h"
 #include "../utils/Log.h"
 
 namespace oms {
 
-// Static pin set definitions
-const Trackball::GPIOPins Trackball::PINS_V1 = {
-    GPIO_NUM_3,   // UP
-    GPIO_NUM_15,  // DOWN
-    GPIO_NUM_21,  // LEFT
-    GPIO_NUM_43,  // RIGHT
-    GPIO_NUM_44   // PRESS
+// GPIO trackball pin set (all known T-Deck hardware)
+// Confirmed by Meshtastic variant.h: TB_UP=3, TB_DOWN=15, TB_LEFT=1, TB_RIGHT=2, TB_PRESS=0
+// And by LilyGo utilities.h: BOARD_TBOX_G01=3, G02=2, G03=15, G04=1
+const Trackball::GPIOPins Trackball::PINS_GPIO = {
+    pins::TB_V2_UP,     // UP = GPIO 3
+    pins::TB_V2_DOWN,   // DOWN = GPIO 15
+    pins::TB_V2_LEFT,   // LEFT = GPIO 1
+    pins::TB_V2_RIGHT,  // RIGHT = GPIO 2
+    pins::TB_V2_PRESS    // PRESS = GPIO 0 (also BOOT button)
 };
 
-const Trackball::GPIOPins Trackball::PINS_V2 = {
-    GPIO_NUM_3,   // UP
-    GPIO_NUM_15,  // DOWN
-    GPIO_NUM_1,   // LEFT
-    GPIO_NUM_2,   // RIGHT
-    GPIO_NUM_0    // PRESS
-};
+// Legacy aliases: V1 and V2 now both point to the same (correct) GPIO config
+const Trackball::GPIOPins Trackball::PINS_V1 = Trackball::PINS_GPIO;
+const Trackball::GPIOPins Trackball::PINS_V2 = Trackball::PINS_GPIO;
 
 const char* Trackball::typeName() const {
     switch (_type) {
         case TrackballType::NONE:        return "none";
-        case TrackballType::GPIO_V1:     return "GPIO v1 (pins 3,15,21,43,44)";
-        case TrackballType::GPIO_V2:     return "GPIO v2 (pins 3,15,1,2,0)";
+        case TrackballType::GPIO_V1:     // DEPRECATED — same as GPIO_STD
+        case TrackballType::GPIO_STD:    return "GPIO (pins 3,15,1,2,0)";
         case TrackballType::I2C_OPTICAL: return "I2C optical (0x4A)";
         default:                         return "unknown";
     }
@@ -62,33 +58,19 @@ void Trackball::begin(TwoWire& wire) {
         return;
     }
 
-    // Step 2: try GPIO V2 first (newer boards)
-    // GPIO 0 is the BOOT button on ESP32-S3, so on V2 boards it will
-    // read LOW when pressed and HIGH when released. If we see GPIO 0
-    // released (HIGH with pullup) AND GPIO 1/2 are also HIGH with pullup,
-    // we tentatively identify V2. But we can't be 100% sure without
-    // user interaction, so we fall through.
-    if (probeGPIO_V2()) {
-        _type = TrackballType::GPIO_V2;
-        _pins = PINS_V2;
-        OMS_LOG("Trackball", "Detected GPIO v2 trackball (pins 3,15,1,2,0)");
+    // Step 2: try GPIO trackball (all known hardware)
+    if (probeGPIO()) {
+        _type = TrackballType::GPIO_STD;
+        _pins = PINS_GPIO;
+        OMS_LOG("Trackball", "Detected GPIO trackball (pins 3,15,1,2,0)");
         configureGPIOPins();
         return;
     }
 
-    // Step 3: try GPIO V1 (original boards)
-    if (probeGPIO_V1()) {
-        _type = TrackballType::GPIO_V1;
-        _pins = PINS_V1;
-        OMS_LOG("Trackball", "Detected GPIO v1 trackball (pins 3,15,21,43,44)");
-        configureGPIOPins();
-        return;
-    }
-
-    // Step 4: default to V1 (most common in the wild)
-    _type = TrackballType::GPIO_V1;
-    _pins = PINS_V1;
-    OMS_LOG("Trackball", "No trackball detected, defaulting to GPIO v1");
+    // Step 3: default to GPIO (most common in the wild)
+    _type = TrackballType::GPIO_STD;
+    _pins = PINS_GPIO;
+    OMS_LOG("Trackball", "No trackball conclusively detected, defaulting to GPIO (pins 3,15,1,2,0)");
     configureGPIOPins();
 }
 
@@ -114,81 +96,37 @@ bool Trackball::probeI2C(TwoWire& wire) {
     return false;
 }
 
-bool Trackball::probeGPIO_V1() {
-    // Set V1-specific pins as input with pullup
-    // If they float HIGH, they are likely connected to trackball switches
-    // GPIO 21, 43, 44 are V1-specific
-    pinMode(GPIO_NUM_21, INPUT_PULLUP);
-    pinMode(GPIO_NUM_43, INPUT_PULLUP);
-    pinMode(GPIO_NUM_44, INPUT_PULLUP);
-
-    // Small delay for pullup to settle
+bool Trackball::probeGPIO() {
+    // Configure GPIO trackball pins with pullup
+    // GPIO 0 (BOOT/PRESS) is special: on ESP32-S3 it has external pullup
+    // and reads HIGH when not pressed. GPIO 1 and 2 are trackball
+    // LEFT and RIGHT, both with external pullups on T-Deck.
+    // If these pins read HIGH (not floating/LOW), trackball is likely present.
+    pinMode(pins::TB_V2_UP,    INPUT_PULLUP);
+    pinMode(pins::TB_V2_DOWN,  INPUT_PULLUP);
+    pinMode(pins::TB_V2_LEFT,  INPUT_PULLUP);
+    pinMode(pins::TB_V2_RIGHT, INPUT_PULLUP);
+    pinMode(pins::TB_V2_PRESS, INPUT_PULLUP);
     delayMicroseconds(100);
 
-    // If any V1-specific pin reads LOW (pressed), the trackball exists
-    // If all read HIGH, it is inconclusive (could be released or absent)
-    // Check if the shared pins (3, 15) also read HIGH (expected)
-    bool v1_pins_valid = (digitalRead(GPIO_NUM_21) == HIGH &&
-                          digitalRead(GPIO_NUM_43) == HIGH &&
-                          digitalRead(GPIO_NUM_44) == HIGH);
+    // All trackball GPIO pins should read HIGH with pullup when not pressed.
+    // If they all read HIGH, trackball is likely connected.
+    // This is not 100% conclusive (floating pins also read HIGH with pullup)
+    // but combined with the I2C check first, it is sufficient.
+    bool all_high = (digitalRead(pins::TB_V2_UP)    == HIGH &&
+                     digitalRead(pins::TB_V2_DOWN)  == HIGH &&
+                     digitalRead(pins::TB_V2_LEFT)  == HIGH &&
+                     digitalRead(pins::TB_V2_RIGHT) == HIGH);
 
-    // Check if V2-specific pins are ALSO high, which would mean V2 instead
-    pinMode(GPIO_NUM_1, INPUT_PULLUP);
-    pinMode(GPIO_NUM_2, INPUT_PULLUP);
-    pinMode(GPIO_NUM_0, INPUT_PULLUP);
-    delayMicroseconds(100);
-
-    // GPIO 0 is the BOOT button, reads LOW normally
-    // If GPIO 1 and 2 are LOW (unusual for floating), V2 is more likely
-    bool v2_pins_active = (digitalRead(GPIO_NUM_1) == LOW ||
-                           digitalRead(GPIO_NUM_2) == LOW);
-
-    if (v2_pins_active) {
-        return false;  // V2 pins are active, not V1
-    }
-
-    return v1_pins_valid;
+    // GPIO 0 is the BOOT button and reads LOW during boot.
+    // After boot, it reads HIGH with pullup when not pressed.
+    // Don't require it HIGH for detection (user might be pressing it).
+    return all_high;
 }
 
-bool Trackball::probeGPIO_V2() {
-    // GPIO 0 is BOOT button on ESP32-S3, normally pulled HIGH externally
-    // GPIO 1 and 2 are V2-specific trackball pins
-    // On V2 boards, GPIO 1 = LEFT, GPIO 2 = RIGHT, GPIO 0 = PRESS
-    pinMode(GPIO_NUM_1, INPUT_PULLUP);
-    pinMode(GPIO_NUM_2, INPUT_PULLUP);
-    pinMode(GPIO_NUM_0, INPUT_PULLUP);
-    delayMicroseconds(100);
-
-    // On V2 boards, GPIO 0 is connected to trackball press switch
-    // It reads HIGH when not pressed (with pullup)
-    // GPIO 1 and 2 also read HIGH when not pressed
-    // The issue: these pins also read HIGH if trackball is absent
-    // So we check the V1 pins: if GPIO 21/43/44 are floating/LOW,
-    // then V1 is absent and V2 is more likely
-
-    pinMode(GPIO_NUM_21, INPUT_PULLUP);
-    pinMode(GPIO_NUM_43, INPUT_PULLUP);
-    pinMode(GPIO_NUM_44, INPUT_PULLUP);
-    delayMicroseconds(100);
-
-    // If V1-specific pins read LOW (no pullup resistor present = floating),
-    // they are likely NOT connected, suggesting V2
-    bool v1_pins_absent = (digitalRead(GPIO_NUM_21) == LOW ||
-                           digitalRead(GPIO_NUM_43) == LOW ||
-                           digitalRead(GPIO_NUM_44) == LOW);
-
-    // If V2 pins all read HIGH (not floating), V2 is possible
-    bool v2_pins_present = (digitalRead(GPIO_NUM_1) == HIGH &&
-                            digitalRead(GPIO_NUM_2) == HIGH &&
-                            digitalRead(GPIO_NUM_0) == HIGH);
-
-    // Strong signal: V1 pins are floating, V2 pins have pullups
-    if (v1_pins_absent && v2_pins_present) {
-        return true;
-    }
-
-    return false;
-}
+// Legacy probe functions — now redirect to unified probeGPIO()
+bool Trackball::probeGPIO_V1() { return probeGPIO(); }
+bool Trackball::probeGPIO_V2() { return probeGPIO(); }
 
 int16_t Trackball::accelerate(int16_t raw) {
     if (raw == 0) return 0;
@@ -213,8 +151,8 @@ int16_t Trackball::accelerate(int16_t raw) {
 
 void Trackball::tick() {
     switch (_type) {
-        case TrackballType::GPIO_V1:
-        case TrackballType::GPIO_V2: {
+        case TrackballType::GPIO_V1:     // DEPRECATED — same as GPIO_STD
+        case TrackballType::GPIO_STD: {
             // Accumulate raw deltas (before acceleration)
             int16_t rawDy = (!digitalRead(_pins.down) - !digitalRead(_pins.up));
             int16_t rawDx = (!digitalRead(_pins.right) - !digitalRead(_pins.left));
@@ -261,8 +199,6 @@ void Trackball::tick() {
                         _driftDirX = dir;
                     }
                 } else {
-                    // No movement: if we were suppressing, keep suppressing
-                    // for a few more ticks (user may be pausing briefly)
                     if (_driftSuppressX > 0) {
                         _driftSuppressX--;
                     }
@@ -299,17 +235,11 @@ void Trackball::tick() {
                 _rawDx += dX;
                 _rawDy += dY;
 
-                // Press detection with debounce
-                // Try GPIO 44 first (V1 press), then GPIO 0 (V2 press / BOOT)
+                // Press detection: use GPIO 0 (BOOT/PRESS) for I2C sensor too
                 bool pressNow = false;
-                pinMode(GPIO_NUM_44, INPUT_PULLUP);
-                if (!digitalRead(GPIO_NUM_44)) {
+                pinMode(pins::TB_V2_PRESS, INPUT_PULLUP);
+                if (!digitalRead(pins::TB_V2_PRESS)) {
                     pressNow = true;
-                } else {
-                    pinMode(GPIO_NUM_0, INPUT_PULLUP);
-                    if (!digitalRead(GPIO_NUM_0)) {
-                        pressNow = true;
-                    }
                 }
 
                 if (pressNow) {

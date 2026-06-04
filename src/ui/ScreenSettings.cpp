@@ -568,7 +568,7 @@ static void ota_start_sd_cb(lv_event_t* e) {
     if (s_otaInProgress) return;
 
     // Check SD card
-    if (!SD.begin(42)) {  // SD_CS_PIN
+    if (!SD.begin(39)) {  // T-Deck SD card CS (official: BOARD_SDCARD_CS=39)
         if (s_otaStatusLabel)
             lv_label_set_text(s_otaStatusLabel, "No SD card!");
         return;

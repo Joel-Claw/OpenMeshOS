@@ -15,40 +15,9 @@
 namespace oms {
 
 // ── Pin definitions (T-Deck / T-Deck Plus) ─────────────────────────
-static constexpr gpio_num_t PIN_LORA_CS    = GPIO_NUM_9;
-static constexpr gpio_num_t PIN_LORA_RST   = GPIO_NUM_12;
-static constexpr gpio_num_t PIN_LORA_DIO1  = GPIO_NUM_14;
-static constexpr gpio_num_t PIN_LORA_BUSY  = GPIO_NUM_13;
-static constexpr gpio_num_t PIN_LORA_SCK   = GPIO_NUM_40;
-static constexpr gpio_num_t PIN_LORA_MISO  = GPIO_NUM_41;
-static constexpr gpio_num_t PIN_LORA_MOSI  = GPIO_NUM_42;
-
-static constexpr gpio_num_t PIN_TFT_CS     = GPIO_NUM_4;
-static constexpr gpio_num_t PIN_TFT_DC     = GPIO_NUM_5;
-static constexpr gpio_num_t PIN_TFT_RST    = GPIO_NUM_6;
-static constexpr gpio_num_t PIN_TFT_SCK    = GPIO_NUM_40;  // shared SPI
-static constexpr gpio_num_t PIN_TFT_MOSI   = GPIO_NUM_42;  // shared SPI
-static constexpr gpio_num_t PIN_BACKLIGHT   = GPIO_NUM_2;
-
-static constexpr gpio_num_t PIN_KB_SDA     = GPIO_NUM_18;
-static constexpr gpio_num_t PIN_KB_SCL     = GPIO_NUM_8;
-
-// Trackball GPIO V1 (original boards)
-static constexpr gpio_num_t PIN_TB_V1_UP    = GPIO_NUM_3;
-static constexpr gpio_num_t PIN_TB_V1_DOWN  = GPIO_NUM_15;
-static constexpr gpio_num_t PIN_TB_V1_LEFT  = GPIO_NUM_21;
-static constexpr gpio_num_t PIN_TB_V1_RIGHT = GPIO_NUM_43;
-static constexpr gpio_num_t PIN_TB_V1_PRESS = GPIO_NUM_44;
-
-// Trackball GPIO V2 (newer boards)
-static constexpr gpio_num_t PIN_TB_V2_UP    = GPIO_NUM_3;
-static constexpr gpio_num_t PIN_TB_V2_DOWN  = GPIO_NUM_15;
-static constexpr gpio_num_t PIN_TB_V2_LEFT  = GPIO_NUM_1;
-static constexpr gpio_num_t PIN_TB_V2_RIGHT = GPIO_NUM_2;
-static constexpr gpio_num_t PIN_TB_V2_PRESS = GPIO_NUM_0;
-
-static constexpr gpio_num_t PIN_GPS_TX     = GPIO_NUM_17;
-static constexpr gpio_num_t PIN_GPS_RX     = GPIO_NUM_16;
+// Defined in Board.h as oms::pins::* constants.
+// Cross-referenced with official LilyGo T-Deck utilities.h.
+// See Board.h for full pin mapping and change history.
 
 // ── Static instance ────────────────────────────────────────────────
 static Board s_board;
@@ -61,6 +30,10 @@ Board& Board::instance() {
 void Board::init() {
     OMS_LOG("Board", "Initialising T-Deck hardware");
 
+    // Power enable: GPIO 10 must be HIGH for LoRa, SD card, and audio
+    pinMode(pins::POWER_EN, OUTPUT);
+    digitalWrite(pins::POWER_EN, HIGH);
+
     // SPIFFS for config / keys / messages
     if (!SPIFFS.begin(true)) {
         OMS_LOG("Board", "SPIFFS mount failed, formatting");
@@ -69,14 +42,14 @@ void Board::init() {
     }
 
     // Backlight on
-    pinMode(PIN_BACKLIGHT, OUTPUT);
-    digitalWrite(PIN_BACKLIGHT, HIGH);
+    pinMode(pins::DISP_BL, OUTPUT);
+    digitalWrite(pins::DISP_BL, HIGH);
 
     // Display init is handled by LVGL / TFT_eSPI driver
     // (configured via build flags in platformio.ini)
 
     // Keyboard I2C
-    Wire.begin(PIN_KB_SDA, PIN_KB_SCL);
+    Wire.begin(pins::KB_SDA, pins::KB_SCL);
 
     // BBQ10KB keyboard init
     if (_keyboard.begin(&Wire)) {
@@ -91,7 +64,7 @@ void Board::init() {
 
     // GPS serial (T-Deck Plus has built-in GPS)
 #ifdef OMS_HAS_BUILTIN_GPS
-    _gpsSerial.begin(9600, SERIAL_8N1, PIN_GPS_RX, PIN_GPS_TX);
+    _gpsSerial.begin(9600, SERIAL_8N1, pins::GPS_RX, pins::GPS_TX);
 #endif
 
     _initialized = true;
@@ -127,7 +100,8 @@ bool Board::hasGPSFix() const {
 
 float Board::gpsLat() const {
 #ifdef OMS_HAS_BUILTIN_GPS
-    return _gps.location.lat();
+    // TinyGPSPlus lat()/lng() are non-const (clear updated flags), but read-only semantically
+    return const_cast<TinyGPSPlus&>(_gps).location.lat();
 #else
     return 0.0f;
 #endif
@@ -135,7 +109,7 @@ float Board::gpsLat() const {
 
 float Board::gpsLng() const {
 #ifdef OMS_HAS_BUILTIN_GPS
-    return _gps.location.lng();
+    return const_cast<TinyGPSPlus&>(_gps).location.lng();
 #else
     return 0.0f;
 #endif
@@ -143,7 +117,7 @@ float Board::gpsLng() const {
 
 float Board::gpsAltitude() const {
 #ifdef OMS_HAS_BUILTIN_GPS
-    return _gps.altitude.meters();
+    return const_cast<TinyGPSPlus&>(_gps).altitude.meters();
 #else
     return 0.0f;
 #endif
@@ -151,7 +125,7 @@ float Board::gpsAltitude() const {
 
 float Board::gpsSpeed() const {
 #ifdef OMS_HAS_BUILTIN_GPS
-    return _gps.speed.kmph();
+    return const_cast<TinyGPSPlus&>(_gps).speed.kmph();
 #else
     return 0.0f;
 #endif
@@ -159,7 +133,7 @@ float Board::gpsSpeed() const {
 
 float Board::gpsCourse() const {
 #ifdef OMS_HAS_BUILTIN_GPS
-    return _gps.course.deg();
+    return const_cast<TinyGPSPlus&>(_gps).course.deg();
 #else
     return 0.0f;
 #endif
@@ -167,7 +141,8 @@ float Board::gpsCourse() const {
 
 int Board::gpsSatellites() const {
 #ifdef OMS_HAS_BUILTIN_GPS
-    return _gps.satellites.value();
+    // TinyGPSInteger::value() is non-const (clears updated flag), but read-only semantically
+    return const_cast<TinyGPSPlus&>(_gps).satellites.value();
 #else
     return 0;
 #endif

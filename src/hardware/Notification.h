@@ -18,6 +18,7 @@
 
 #include <Arduino.h>
 #include <driver/i2s.h>
+#include "Board.h"
 
 namespace oms {
 
@@ -83,11 +84,11 @@ private:
     /// I2S port number (use port 1 to avoid conflict with other I2S users)
     static constexpr i2s_port_t kI2S_PORT = I2S_NUM_1;
 
-    // I2S configuration
-    static constexpr gpio_num_t PIN_I2S_BCK  = GPIO_NUM_7;
-    static constexpr gpio_num_t PIN_I2S_WS   = GPIO_NUM_5;
-    static constexpr gpio_num_t PIN_I2S_DOUT = GPIO_NUM_6;
-    static constexpr gpio_num_t PIN_POWER_EN  = GPIO_NUM_10;
+    // I2S configuration (from pins:: namespace in Board.h)
+    static constexpr gpio_num_t PIN_I2S_BCK  = pins::I2S_BCK;
+    static constexpr gpio_num_t PIN_I2S_WS   = pins::I2S_WS;
+    static constexpr gpio_num_t PIN_I2S_DOUT = pins::I2S_DOUT;
+    static constexpr gpio_num_t PIN_POWER_EN = pins::POWER_EN;
 
     // Audio parameters
     static constexpr uint32_t kSampleRate = 8000;  // 8kHz sample rate (sufficient for beeps)
