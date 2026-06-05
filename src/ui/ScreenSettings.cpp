@@ -34,6 +34,7 @@
 #include "../version.h"
 #include <Update.h>
 #include <SD.h>
+#include <mbedtls/md.h>
 
 namespace oms { namespace ui {
 
@@ -575,6 +576,8 @@ static void ota_start_sd_cb(lv_event_t* e) {
     }
 
     const char* firmwarePath = "/oms/firmware.bin";
+    const char* checksumPath = "/oms/firmware.bin.sha256";
+
     if (!SD.exists(firmwarePath)) {
         if (s_otaStatusLabel)
             lv_label_set_text(s_otaStatusLabel, "No /oms/firmware.bin");
@@ -582,6 +585,71 @@ static void ota_start_sd_cb(lv_event_t* e) {
     }
 
     s_otaInProgress = true;
+    if (s_otaStatusLabel)
+        lv_label_set_text(s_otaStatusLabel, "Verifying firmware...");
+
+    // ── SHA-256 integrity check ──────────────────────────────────
+    // If a .sha256 file exists alongside the firmware, verify it.
+    // The checksum file contains hex-encoded SHA-256 of firmware.bin.
+    // This prevents flashing corrupted or tampered firmware.
+    if (SD.exists(checksumPath)) {
+        File chkFile = SD.open(checksumPath, FILE_READ);
+        if (chkFile) {
+            String expectedHex = chkFile.readString();
+            chkFile.close();
+            // Trim whitespace/newlines
+            expectedHex.trim();
+
+            if (expectedHex.length() == 64) {
+                // Compute SHA-256 of firmware.bin
+                mbedtls_md_context_t ctx;
+                mbedtls_md_init(&ctx);
+                mbedtls_md_setup(&ctx, mbedtls_md_info_from_type(MBEDTLS_MD_SHA256), 0);
+                mbedtls_md_starts(&ctx);
+
+                File fwFile = SD.open(firmwarePath, FILE_READ);
+                if (fwFile) {
+                    uint8_t readBuf[512];
+                    while (fwFile.available()) {
+                        size_t n = fwFile.read(readBuf, sizeof(readBuf));
+                        mbedtls_md_update(&ctx, readBuf, n);
+                    }
+                    fwFile.close();
+
+                    uint8_t hash[32];
+                    mbedtls_md_finish(&ctx, hash);
+                    mbedtls_md_free(&ctx);
+
+                    // Convert hash to hex
+                    char actualHex[65];
+                    for (int i = 0; i < 32; i++) {
+                        snprintf(actualHex + i * 2, 3, "%02x", hash[i]);
+                    }
+                    actualHex[64] = '\0';
+
+                    if (expectedHex.equalsIgnoreCase(actualHex)) {
+                        if (s_otaStatusLabel)
+                            lv_label_set_text(s_otaStatusLabel, "Checksum OK!");
+                    } else {
+                        if (s_otaStatusLabel)
+                            lv_label_set_text(s_otaStatusLabel, "CHECKSUM MISMATCH!");
+                        OMS_LOG("OTA", "SHA-256 mismatch: expected=%s got=%s", expectedHex.c_str(), actualHex);
+                        s_otaInProgress = false;
+                        return;
+                    }
+                } else {
+                    mbedtls_md_free(&ctx);
+                }
+            }
+            // If checksum file is wrong length, skip verification but warn
+            OMS_LOG("OTA", "Warning: invalid checksum file, skipping verification");
+        }
+    }
+    // If no checksum file, proceed without verification (logged as warning)
+    else {
+        OMS_LOG("OTA", "Warning: no .sha256 file, firmware not verified");
+    }
+
     if (s_otaStatusLabel)
         lv_label_set_text(s_otaStatusLabel, "Reading firmware.bin...");
 
@@ -662,7 +730,7 @@ void ScreenSettings::showOTAUpdate() {
 
     // Status label
     s_otaStatusLabel = lv_label_create(list);
-    lv_label_set_text(s_otaStatusLabel, "Place /oms/firmware.bin on SD");
+    lv_label_set_text(s_otaStatusLabel, "Place /oms/firmware.bin on SD\nOptionally add .sha256 checksum");
     lv_obj_set_style_text_color(s_otaStatusLabel, theme::TEXT, 0);
     lv_obj_set_style_text_font(s_otaStatusLabel, &lv_font_montserrat_10, 0);
 

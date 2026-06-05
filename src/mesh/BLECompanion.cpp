@@ -339,16 +339,21 @@ void BLECompanion::handleConfigWrite(BLECharacteristic* pChar) {
             if (keyLen < sizeof(key)) memcpy(key, line, keyLen);
             if (valLen < sizeof(val)) memcpy(val, eq + 1, valLen);
 
-            // Apply known config keys
+            // Apply known config keys with validation
             if (strcmp(key, "callsign") == 0) {
-                config::setCallsign(val);
+                config::setCallsign(val);  // setCallsign validates alphanumeric
                 OMS_LOG("BLE", "Config: callsign=%s", val);
             } else if (strcmp(key, "region") == 0) {
-                config::setRegion(val);
+                config::setRegion(val);  // setRegion validates against known regions
                 OMS_LOG("BLE", "Config: region=%s", val);
             } else if (strcmp(key, "channel") == 0) {
-                const_cast<Config&>(config::get()).channel = atoi(val);
-                OMS_LOG("BLE", "Config: channel=%s", val);
+                int ch = atoi(val);
+                if (ch >= 0 && ch < 8) {
+                    const_cast<Config&>(config::get()).channel = ch;
+                    OMS_LOG("BLE", "Config: channel=%d", ch);
+                } else {
+                    OMS_LOG("BLE", "Config: invalid channel %s (0-7)", val);
+                }
             } else if (strcmp(key, "brightness") == 0) {
                 int br = atoi(val);
                 if (br >= 0 && br <= 255) {
@@ -361,6 +366,8 @@ void BLECompanion::handleConfigWrite(BLECharacteristic* pChar) {
                 const_cast<Config&>(config::get()).notifySound = snd;
                 oms::Notification::instance().setSoundEnabled(snd);
                 OMS_LOG("BLE", "Config: sound=%s", snd ? "on" : "off");
+            } else {
+                OMS_LOG("BLE", "Config: unknown key '%s', ignored", key);
             }
         }
 

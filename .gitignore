@@ -14,3 +14,7 @@ test_map_engine
 
 test_gps_nmea
 test_spiffs_stress
+test_gps_nmea
+test_map_engine
+test_spiffs_stress
+test_spiffs_integration

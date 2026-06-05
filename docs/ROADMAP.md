@@ -99,7 +99,7 @@ Goal: Full settings, terminal, and polish.
   - [ ] Test: verify node list updates from MeshCore adverts
   - [ ] Discover repeaters on the mesh
   - [x] Show signal strength, distance, uptime — quality column (+++/++/+/-), age (now/Xs/Xm/Xh), distance (m/km)
-  - [ ] Whitelist management UI (add/remove from settings)
+  - [x] Whitelist management UI (add/remove from settings) — June 5, 2026
 - [x] Terminal screen
   - [x] Full MeshCore CLI
   - [x] Command history (up/down arrows)
@@ -141,7 +141,7 @@ Goal: Production-ready firmware.
 - [x] SPIFFS wear minimization (config writes debounced 5s, explicit saveNow() before reboot)
 - [x] Watchdog timer (auto-reboot on hang after 30s)
 - [x] Crash logging (save stack trace to SPIFFS, show on next boot)
-- [ ] Security audit (MeshCore encryption, no plaintext key storage)
+- [x] Security audit (MeshCore encryption, no plaintext key storage) — see docs/SECURITY_AUDIT.md
 - [x] User documentation (flashing guide, settings reference, FAQ) — docs/USER_GUIDE.md
 - [x] Release binaries on GitHub with SHA-256 checksums
 - [x] Web flasher page (like MeshCore's) — instructions in release notes

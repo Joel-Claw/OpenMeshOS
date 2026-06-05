@@ -110,31 +110,49 @@ void config::init() {
             s_cfg.callsign, s_cfg.radioRegion);
 }
 
+/// Write a JSON-safe escaped string to file.
+/// Escapes ", \, and control characters to prevent JSON injection.
+static void writeJsonString(File& f, const char* str) {
+    f.print('"');
+    while (*str) {
+        char c = *str++;
+        if (c == '"')       { f.print("\\\""); }
+        else if (c == '\\') { f.print("\\\\"); }
+        else if (c == '\n') { f.print("\\n"); }
+        else if (c == '\r') { f.print("\\r"); }
+        else if (c == '\t') { f.print("\\t"); }
+        else if ((uint8_t)c < 0x20) {
+            // Skip other control characters
+        }
+        else { f.print(c); }
+    }
+    f.print('"');
+}
+
 void config::save() {
     File f = SPIFFS.open(CONFIG_PATH, "w");
     if (!f) {
         OMS_LOG("Config", "Failed to write config!");
         return;
     }
-    f.printf(
-        "{\n"
-        "  \"radioRegion\": \"%s\",\n"
-        "  \"callsign\": \"%s\",\n"
-        "  \"channel\": %d,\n"
+    f.print("{\n");
+    f.print("  \"radioRegion\": ");
+    writeJsonString(f, s_cfg.radioRegion);
+    f.print(",\n  \"callsign\": ");
+    writeJsonString(f, s_cfg.callsign);
+    f.printf(",\n  \"channel\": %d,\n"
         "  \"brightness\": %d,\n"
         "  \"screenTimeoutSec\": %d,\n"
-        "  \"notifySound\": %s,\n"
-        "  \"mapTileDir\": \"%s\",\n"
-        "  \"theme\": %d,\n"
-        "  \"txPower\": %d\n"
-        "}\n",
-        s_cfg.radioRegion,
-        s_cfg.callsign,
+        "  \"notifySound\": %s,\n",
         s_cfg.channel,
         s_cfg.brightness,
         s_cfg.screenTimeoutSec,
-        s_cfg.notifySound ? "true" : "false",
-        s_cfg.mapTileDir,
+        s_cfg.notifySound ? "true" : "false");
+    f.print("  \"mapTileDir\": ");
+    writeJsonString(f, s_cfg.mapTileDir);
+    f.printf(",\n  \"theme\": %d,\n"
+        "  \"txPower\": %d\n"
+        "}\n",
         s_cfg.theme,
         s_cfg.txPower
     );
@@ -143,12 +161,45 @@ void config::save() {
 }
 
 void config::setCallsign(const char* cs) {
-    strncpy(s_cfg.callsign, cs, sizeof(s_cfg.callsign) - 1);
+    // Validate: allow alphanumeric, dash, underscore only
+    // Prevents JSON injection and BLE config abuse
+    char safe[16];
+    size_t j = 0;
+    for (size_t i = 0; cs[i] && j < sizeof(safe) - 1; i++) {
+        char c = cs[i];
+        if ((c >= '0' && c <= '9') ||
+            (c >= 'A' && c <= 'Z') ||
+            (c >= 'a' && c <= 'z') ||
+            c == '-' || c == '_') {
+            safe[j++] = c;
+        }
+    }
+    safe[j] = '\0';
+    if (j == 0) {
+        strncpy(safe, "OMS-0001", sizeof(safe) - 1);
+        safe[sizeof(safe) - 1] = '\0';
+    }
+    strncpy(s_cfg.callsign, safe, sizeof(s_cfg.callsign) - 1);
     s_cfg.callsign[sizeof(s_cfg.callsign) - 1] = '\0';
     markDirty();
 }
 
 void config::setRegion(const char* reg) {
+    // Validate: only known region strings accepted
+    static const char* validRegions[] = {
+        "EU868", "US915", "AU915", "AS923", "KR920", "IN865"
+    };
+    bool valid = false;
+    for (auto& r : validRegions) {
+        if (strncmp(reg, r, sizeof(s_cfg.radioRegion)) == 0) {
+            valid = true;
+            break;
+        }
+    }
+    if (!valid) {
+        OMS_LOG("Config", "Invalid region '%s', keeping current", reg);
+        return;
+    }
     strncpy(s_cfg.radioRegion, reg, sizeof(s_cfg.radioRegion) - 1);
     s_cfg.radioRegion[sizeof(s_cfg.radioRegion) - 1] = '\0';
     markDirty();

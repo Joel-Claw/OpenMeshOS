@@ -13,11 +13,32 @@ namespace oms {
 
 static const char* WHITELIST_PATH = "/whitelist.bin";
 
+/// Sanitize a mesh node name: strip non-printable characters.
+/// Returns static buffer (not thread-safe, but only called from main thread).
+static const char* sanitizeMeshName(const char* name, char* buf, size_t bufLen) {
+    size_t j = 0;
+    for (size_t i = 0; name[i] && j < bufLen - 1; i++) {
+        char c = name[i];
+        if (c >= 0x20 && c < 0x7F) {
+            buf[j++] = c;
+        }
+        // Skip control characters and non-ASCII
+    }
+    buf[j] = '\0';
+    return buf;
+}
+
 void NodeTracker::onAdvert(const uint8_t pub_key[32],
                             uint8_t adv_type,
                             const char* name,
                             int32_t lat, int32_t lon,
                             int rssi) {
+    // Sanitize name to strip non-printable characters
+    char safeName[24];
+    if (name && name[0]) {
+        sanitizeMeshName(name, safeName, sizeof(safeName));
+        name = safeName;
+    }
     // Check if we already know this node
     int idx = findExisting(pub_key);
 
