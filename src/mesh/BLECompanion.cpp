@@ -302,14 +302,24 @@ void BLECompanion::buildStatusPayload(uint8_t* buf, size_t& len) {
     buf[len++] = freePsram & 0xFF;
     buf[len++] = (freePsram >> 8) & 0xFF;
 
-    // Node count (placeholder)
-    buf[len++] = 0;
+    // Node count (from NodeTracker — live count of discovered mesh nodes)
+    buf[len++] = (uint8_t)MeshService::instance().nodeCount();
 
     // Current channel
     buf[len++] = (uint8_t)config::get().channel;
 
     // Region code (index into region table)
-    buf[len++] = 0;  // TODO: encode region index
+    // Maps: EU868=0, US915=1, AU915=2, AS923=3, KR920=4, IN865=5
+    static const char* regionNames[] = {"EU868", "US915", "AU915", "AS923", "KR920", "IN865"};
+    uint8_t regionIdx = 0;  // default EU868
+    const char* curRegion = config::get().radioRegion;
+    for (uint8_t i = 0; i < 6; i++) {
+        if (strcmp(curRegion, regionNames[i]) == 0) {
+            regionIdx = i;
+            break;
+        }
+    }
+    buf[len++] = regionIdx;
 }
 
 // ── handleConfigWrite ─────────────────────────────────────────────

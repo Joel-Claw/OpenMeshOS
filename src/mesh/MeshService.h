@@ -26,6 +26,7 @@ public:
 
     // Status
     uint16_t hopCount() const;
+    uint16_t nodeCount() const;
     int rssi() const;
 
     bool initialized() const { return _initialized; }

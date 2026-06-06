@@ -85,8 +85,8 @@ void Board::tick() {
     }
 #endif
 
-    // Battery ADC (T-Deck uses voltage divider on IO4 or IO1 depending on rev)
-    // TODO: implement proper ADC read after pin validation
+    // Battery ADC sampling is handled by TDeckBoard::getBattMilliVolts()
+    // which reads the ADC on each call. No periodic caching needed here.
 }
 
 // ── GPS ───────────────────────────────────────────────────────────

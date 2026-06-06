@@ -7,6 +7,7 @@
 #include "MeshService.h"
 #include "TDeckBoard.h"
 #include "TDeckClock.h"
+#include "NodeTracker.h"
 #include "../hardware/Board.h"
 #include "../utils/Config.h"
 #include "../utils/Log.h"
@@ -252,8 +253,13 @@ bool MeshService::sendDirect(const uint8_t* pubkey, const char* text) {
 }
 
 uint16_t MeshService::hopCount() const {
-    // TODO: track from MeshCore advert timestamps
-    return 0;
+    // Hop count = number of known mesh nodes (from adverts)
+    // This represents the reachability of the mesh from our perspective
+    return static_cast<uint16_t>(NodeTracker::instance().count());
+}
+
+uint16_t MeshService::nodeCount() const {
+    return static_cast<uint16_t>(NodeTracker::instance().count());
 }
 
 int MeshService::rssi() const {

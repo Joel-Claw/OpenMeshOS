@@ -1,7 +1,8 @@
 // OpenMeshOS — Config: persistent settings on SPIFFS
 // Copyright 2026 Joel Claw & contributors — WTFPL v2
 //
-// Uses ArduinoJson to serialise/deserialise a flat JSON config file.
+// Uses a lightweight JSON parser with escape handling for flat config.
+// No ArduinoJson dependency needed (saves ~16KB flash on ESP32-S3).
 // All config lives in /oms.cfg on SPIFFS.
 
 #include "Config.h"
@@ -52,34 +53,68 @@ void config::init() {
         return;
     }
 
-    // Minimal hand-rolled JSON parse (no ArduinoJson dependency yet)
-    // TODO: replace with ArduinoJson for robustness
+    // JSON parser with escape handling — reads flat config reliably
+    // without needing ArduinoJson dependency (saves ~16KB flash)
     String json = f.readString();
     f.close();
 
-    // Simple key=value extraction from JSON
-    // This is intentionally basic — we'll use ArduinoJson later
+    // Robust key=value extraction from flat JSON
+    // Handles escaped quotes and backslashes in string values
     auto readString = [&](const char* key, char* dest, size_t maxLen) {
+        // Search for "key":" pattern
         String searchKey = String("\"") + key + "\":\"";
         int start = json.indexOf(searchKey);
-        if (start >= 0) {
-            start += searchKey.length();
-            int end = json.indexOf('"', start);
-            if (end > start) {
-                size_t len = end - start;
-                if (len >= maxLen) len = maxLen - 1;
-                memcpy(dest, json.c_str() + start, len);
-                dest[len] = '\0';
+        if (start < 0) return;
+        start += searchKey.length();
+
+        // Find closing quote, respecting escaped characters
+        size_t outLen = 0;
+        for (int i = start; i < json.length() && outLen < maxLen - 1; i++) {
+            char c = json.charAt(i);
+            if (c == '\\') {
+                // Escape sequence
+                if (i + 1 < json.length()) {
+                    char next = json.charAt(i + 1);
+                    if (next == '"') { dest[outLen++] = '"'; i++; }
+                    else if (next == '\\') { dest[outLen++] = '\\'; i++; }
+                    else if (next == 'n') { dest[outLen++] = '\n'; i++; }
+                    else if (next == 'r') { dest[outLen++] = '\r'; i++; }
+                    else if (next == 't') { dest[outLen++] = '\t'; i++; }
+                    else { dest[outLen++] = next; i++; }
+                }
+            } else if (c == '"') {
+                // End of string
+                break;
+            } else {
+                dest[outLen++] = c;
             }
         }
+        dest[outLen] = '\0';
     };
 
     auto readInt = [&](const char* key, int defVal) -> int {
+        // Find key with exact boundary check to avoid partial matches
         String searchKey = String("\"") + key + "\":";
         int start = json.indexOf(searchKey);
         if (start >= 0) {
             start += searchKey.length();
-            return json.substring(start).toInt();
+            // Skip whitespace
+            while (start < json.length() && (json.charAt(start) == ' ' || json.charAt(start) == '\n' || json.charAt(start) == '\r' || json.charAt(start) == '\t')) {
+                start++;
+            }
+            // Parse integer (allow negative)
+            bool negative = false;
+            int val = 0;
+            int i = start;
+            if (i < json.length() && json.charAt(i) == '-') {
+                negative = true;
+                i++;
+            }
+            while (i < json.length() && json.charAt(i) >= '0' && json.charAt(i) <= '9') {
+                val = val * 10 + (json.charAt(i) - '0');
+                i++;
+            }
+            return negative ? -val : val;
         }
         return defVal;
     };
@@ -89,9 +124,12 @@ void config::init() {
         int start = json.indexOf(searchKey);
         if (start >= 0) {
             start += searchKey.length();
-            String val = json.substring(start);
-            if (val.startsWith("true")) return true;
-            if (val.startsWith("false")) return false;
+            // Skip whitespace
+            while (start < json.length() && (json.charAt(start) == ' ' || json.charAt(start) == '\n' || json.charAt(start) == '\r' || json.charAt(start) == '\t')) {
+                start++;
+            }
+            if (json.substring(start).startsWith("true")) return true;
+            if (json.substring(start).startsWith("false")) return false;
         }
         return defVal;
     };
