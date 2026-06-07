@@ -144,6 +144,19 @@ void ScreenLock::update() {
                  mv / 1000.0f, rssi);
         lv_label_set_text(_battLabel, buf);
     }
+
+    // Node count
+    if (_nodeLabel && MeshService::instance().initialized()) {
+        uint16_t nodes = MeshService::instance().nodeCount();
+        char buf[24];
+        if (nodes == 0) {
+            snprintf(buf, sizeof(buf), "Mesh: scanning");
+        } else {
+            snprintf(buf, sizeof(buf), "Mesh: %d node%s",
+                     nodes, nodes == 1 ? "" : "s");
+        }
+        lv_label_set_text(_nodeLabel, buf);
+    }
 }
 
 void ScreenLock::resetIdleTimer() {

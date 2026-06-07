@@ -112,7 +112,7 @@ Goal: Full settings, terminal, and polish.
   - Press any key to unlock
   - Auto-dimming after timeout
 - [x] OTA firmware update (via SD card)
-- [ ] OTA firmware update (via BLE)
+- [x] OTA firmware update (via BLE) — implemented in BLECompanion
 
 ## Phase 4: Multi-Device (v0.5.0)
 
