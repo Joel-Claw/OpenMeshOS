@@ -5,13 +5,13 @@
 // Battery ADC on GPIO1, internal temperature sensor, ESP32 reset reason.
 
 #include "TDeckBoard.h"
-#include "../hardware/Board.h"
+#include "../hardware/BoardTDeck.h"
 #include "../utils/Log.h"
 
 namespace oms {
 
 // T-Deck battery ADC pin (GPIO 4 per official LilyGo utilities.h)
-static constexpr gpio_num_t BATT_ADC_PIN = oms::pins::BAT_ADC;
+static constexpr gpio_num_t BATT_ADC_PIN = oms::tdeck::BAT_ADC;
 
 TDeckBoard::TDeckBoard() {
     _startupReason = 0;  // normal boot

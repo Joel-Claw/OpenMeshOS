@@ -118,9 +118,18 @@ Goal: Full settings, terminal, and polish.
 
 Goal: Support other ESP32-S3 LoRa devices.
 
-- [ ] Abstract Board interface
-  - `Board.h` becomes `BoardTDeck.h`
-  - New `BoardGeneric.h` for Heltec V3, RAK WisBlock, etc.
+- [ ] **Abstract Board interface**
+  - [x] Define IBoard interface (IBoard.h) with BoardCaps, LoRaConfig, DisplayConfig
+  - [x] Implement BoardTDeck (T-Deck specific impl of IBoard)
+  - [x] BoardFactory::create() returns correct IBoard* per build target
+  - [x] Backward-compatible Board wrapper delegates to BoardTDeck
+  - [x] Pin constants: tdeck:: namespace (new) with pins:: (deprecated compat)
+  - [x] Unit tests for IBoard (78 tests: pins, configs, caps, battery, haversine, RSSI)
+  - [x] TDeckBoard.cpp migrated to use tdeck:: namespace
+  - [ ] Migrate remaining callers from Board::instance() to BoardFactory::create()
+  - [ ] Migrate remaining callers from pins:: to tdeck::
+  - [ ] `Board.h` becomes `BoardTDeck.h`
+  - [ ] New `BoardGeneric.h` for Heltec V3, RAK WisBlock, etc.
 - [ ] PlatformIO environments for:
   - `t-deck` (current)
   - `t-deck-plus` (GPS variant)
