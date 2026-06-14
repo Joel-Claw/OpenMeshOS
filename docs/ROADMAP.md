@@ -126,9 +126,10 @@ Goal: Support other ESP32-S3 LoRa devices.
   - [x] Pin constants: tdeck:: namespace (new) with pins:: (deprecated compat)
   - [x] Unit tests for IBoard (78 tests: pins, configs, caps, battery, haversine, RSSI)
   - [x] TDeckBoard.cpp migrated to use tdeck:: namespace
-  - [ ] Migrate remaining callers from Board::instance() to BoardFactory::create()
-  - [ ] Migrate remaining callers from pins:: to tdeck::
-  - [ ] `Board.h` becomes `BoardTDeck.h`
+  - [x] Migrate remaining callers from Board::instance() to BoardFactory::create()/theBoard()
+  - [x] Migrate remaining callers from pins:: to tdeck::
+  - [ ] Remove Board.h compat wrapper (only Board.cpp still includes it)
+  - [ ] `Board.h` becomes `BoardTDeck.h` (rename)
   - [ ] New `BoardGeneric.h` for Heltec V3, RAK WisBlock, etc.
 - [ ] PlatformIO environments for:
   - `t-deck` (current)

@@ -87,3 +87,14 @@
 3. Add **rate limiting** on BLE config writes (prevent rapid wear attacks)
 4. Consider **encrypted config** storage (encrypt sensitive fields before writing to SPIFFS)
 5. Add **BLE OTA abort timeout** — if no data for N seconds, auto-abort in-progress OTA
+
+---
+
+## Daily Security Checks
+
+### 2026-06-14
+- **Issues**: 1 (closed, T-Display P4 feature request by stevefoxuk, legitimate community discussion)
+- **PRs**: 0 open, 0 new
+- **CodeQL alerts**: 13 open, all in third-party libraries (LVGL, TFT_eSPI, RadioLib, MeshCore). No alerts in OpenMeshOS source code.
+- **Repo activity**: Only Joel-Claw pushes to dev branch. No suspicious external contributions.
+- **Verdict**: Clean. No malicious content detected.
