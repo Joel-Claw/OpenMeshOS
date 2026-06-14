@@ -9,7 +9,6 @@
 #include "MessageBus.h"
 #include "NodeTracker.h"
 #include "../hardware/Notification.h"
-#include "../hardware/Board.h"
 #include "../utils/Log.h"
 
 namespace oms {

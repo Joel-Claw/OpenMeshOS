@@ -6,7 +6,7 @@
 // and wakes the screen on incoming messages.
 
 #include "Notification.h"
-#include "Board.h"
+#include "IBoard.h"
 #include "../ui/ScreenLock.h"
 #include "../utils/Config.h"
 #include "../utils/Log.h"
@@ -230,7 +230,7 @@ void Notification::wakeScreen() {
     if (ui::ScreenLock::isActive() || ui::ScreenLock::isDimmed()) {
         ui::ScreenLock::resetIdleTimer();
         // If screen was dimmed (not fully locked), restore backlight
-        Board::instance().setBacklight(true);
+        oms::theBoard()->setBacklight(true);
     }
 }
 

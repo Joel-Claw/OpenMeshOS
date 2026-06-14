@@ -21,6 +21,12 @@ BoardTDeck& BoardTDeck::instance() {
     return s_boardTDeck;
 }
 
+// ── Global board accessor ──────────────────────────────────────────
+IBoard* theBoard() {
+    static IBoard* s_board = BoardFactory::create();
+    return s_board;
+}
+
 // ── BoardFactory ──────────────────────────────────────────────────
 IBoard* BoardFactory::create() {
     // For now, only T-Deck is supported. When we add Heltec V3,

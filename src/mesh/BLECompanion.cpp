@@ -7,7 +7,7 @@
 #include "BLECompanion.h"
 #include "MeshService.h"
 #include "TDeckBoard.h"
-#include "../hardware/Board.h"
+#include "../hardware/IBoard.h"
 #include "../hardware/Notification.h"
 #include "../utils/Log.h"
 #include "../utils/Config.h"
@@ -368,7 +368,7 @@ void BLECompanion::handleConfigWrite(BLECharacteristic* pChar) {
                 int br = atoi(val);
                 if (br >= 0 && br <= 255) {
                     const_cast<Config&>(config::get()).brightness = br;
-                    Board::instance().setBacklight(true);
+                    oms::theBoard()->setBacklight(true);
                     OMS_LOG("BLE", "Config: brightness=%d", br);
                 }
             } else if (strcmp(key, "sound") == 0) {

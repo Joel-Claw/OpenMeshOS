@@ -28,7 +28,6 @@
 #include "../mesh/MsgRingBuffer.h"
 #include "../mesh/BLECompanion.h"
 #include "../mesh/TDeckBoard.h"
-#include "../hardware/Board.h"
 #include "../hardware/Notification.h"
 #include "../utils/Log.h"
 #include "../version.h"

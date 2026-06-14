@@ -23,7 +23,6 @@
 #include "Theme.h"
 #include "../map/MapEngine.h"
 #include "../map/TileRenderer.h"
-#include "../hardware/Board.h"
 #include "../utils/Log.h"
 
 namespace oms { namespace ui {

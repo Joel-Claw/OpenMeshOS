@@ -24,7 +24,7 @@
 #include "Theme.h"
 #include "../mesh/NodeTracker.h"
 #include "../mesh/MeshService.h"
-#include "../hardware/Board.h"
+#include "../hardware/IBoard.h"
 #include "../utils/Log.h"
 
 namespace oms { namespace ui {
@@ -244,9 +244,9 @@ void ScreenScanner::refreshList() {
     }
 
     // Get our own GPS position for distance calculations
-    float myLat = Board::instance().gpsLat();
-    float myLng = Board::instance().gpsLng();
-    bool hasGps = Board::instance().hasGPSFix();
+    float myLat = oms::theBoard()->gpsLat();
+    float myLng = oms::theBoard()->gpsLng();
+    bool hasGps = oms::theBoard()->hasGPSFix();
 
     for (size_t i = 0; i < count; i++) {
         const TrackedNode* node = tracker.get(i);

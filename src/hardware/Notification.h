@@ -18,7 +18,7 @@
 
 #include <Arduino.h>
 #include <driver/i2s.h>
-#include "Board.h"
+#include "BoardTDeck.h"
 
 namespace oms {
 
@@ -84,11 +84,11 @@ private:
     /// I2S port number (use port 1 to avoid conflict with other I2S users)
     static constexpr i2s_port_t kI2S_PORT = I2S_NUM_1;
 
-    // I2S configuration (from pins:: namespace in Board.h)
-    static constexpr gpio_num_t PIN_I2S_BCK  = pins::I2S_BCK;
-    static constexpr gpio_num_t PIN_I2S_WS   = pins::I2S_WS;
-    static constexpr gpio_num_t PIN_I2S_DOUT = pins::I2S_DOUT;
-    static constexpr gpio_num_t PIN_POWER_EN = pins::POWER_EN;
+    // I2S configuration (from tdeck:: namespace in BoardTDeck.h)
+    static constexpr gpio_num_t PIN_I2S_BCK  = tdeck::I2S_BCK;
+    static constexpr gpio_num_t PIN_I2S_WS   = tdeck::I2S_WS;
+    static constexpr gpio_num_t PIN_I2S_DOUT = tdeck::I2S_DOUT;
+    static constexpr gpio_num_t PIN_POWER_EN = tdeck::POWER_EN;
 
     // Audio parameters
     static constexpr uint32_t kSampleRate = 8000;  // 8kHz sample rate (sufficient for beeps)

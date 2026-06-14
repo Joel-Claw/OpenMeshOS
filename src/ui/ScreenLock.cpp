@@ -22,7 +22,7 @@
 #include "Theme.h"
 #include "../mesh/MeshService.h"
 #include "../mesh/TDeckBoard.h"
-#include "../hardware/Board.h"
+#include "../hardware/IBoard.h"
 #include "../utils/Config.h"
 #include "../utils/Log.h"
 
@@ -110,7 +110,7 @@ void ScreenLock::unlock() {
     _lastActivity = millis();
 
     // Restore backlight
-    Board::instance().setBacklight(true);
+    oms::theBoard()->setBacklight(true);
 
     OMS_LOG("UI", "Screen unlocked");
     ScreenHome::create();
@@ -163,7 +163,7 @@ void ScreenLock::resetIdleTimer() {
     _lastActivity = millis();
     if (_dimmed && !_active) {
         // Wake from dim
-        Board::instance().setBacklight(true);
+        oms::theBoard()->setBacklight(true);
         _dimmed = false;
     }
 }

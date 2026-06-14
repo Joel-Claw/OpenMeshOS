@@ -27,7 +27,7 @@
 #include "../mesh/NodeTracker.h"
 #include "../mesh/BLECompanion.h"
 #include "../mesh/TDeckBoard.h"
-#include "../hardware/Board.h"
+#include "../hardware/IBoard.h"
 #include "../utils/Config.h"
 #include "../utils/ConfigExport.h"
 #include "../utils/Log.h"
@@ -250,11 +250,11 @@ void ScreenSettings::showDeviceInfo() {
     lv_obj_set_style_text_color(item, theme::TEXT_MUTED, 0);
 
     // GPS info (if present)
-    if (oms::Board::instance().hasGPSFix()) {
+    if (oms::theBoard()->hasGPSFix()) {
         snprintf(buf, sizeof(buf), "GPS: %.4f %.4f (%d sats)",
-                 oms::Board::instance().gpsLat(),
-                 oms::Board::instance().gpsLng(),
-                 oms::Board::instance().gpsSatellites());
+                 oms::theBoard()->gpsLat(),
+                 oms::theBoard()->gpsLng(),
+                 oms::theBoard()->gpsSatellites());
     } else {
         snprintf(buf, sizeof(buf), "GPS: no fix");
     }
@@ -384,7 +384,7 @@ static void brightness_cb(lv_event_t* e) {
     oms::Config mutable_cfg = oms::config::get();
     mutable_cfg.brightness = val;
     // Apply immediately to backlight
-    oms::Board::instance().setBacklight(val > 0);
+    oms::theBoard()->setBacklight(val > 0);
     // Save to SPIFFS
     oms::config::save();
     OMS_LOG("UI", "Brightness: %d", val);

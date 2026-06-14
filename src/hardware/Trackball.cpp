@@ -18,7 +18,7 @@
 // are connected. We default to GPIO if I2C is not found.
 
 #include "Trackball.h"
-#include "Board.h"
+#include "BoardTDeck.h"
 #include "../utils/Log.h"
 
 namespace oms {
@@ -27,11 +27,11 @@ namespace oms {
 // Confirmed by Meshtastic variant.h: TB_UP=3, TB_DOWN=15, TB_LEFT=1, TB_RIGHT=2, TB_PRESS=0
 // And by LilyGo utilities.h: BOARD_TBOX_G01=3, G02=2, G03=15, G04=1
 const Trackball::GPIOPins Trackball::PINS_GPIO = {
-    pins::TB_V2_UP,     // UP = GPIO 3
-    pins::TB_V2_DOWN,   // DOWN = GPIO 15
-    pins::TB_V2_LEFT,   // LEFT = GPIO 1
-    pins::TB_V2_RIGHT,  // RIGHT = GPIO 2
-    pins::TB_V2_PRESS    // PRESS = GPIO 0 (also BOOT button)
+    tdeck::TB_UP,     // UP = GPIO 3
+    tdeck::TB_DOWN,   // DOWN = GPIO 15
+    tdeck::TB_LEFT,   // LEFT = GPIO 1
+    tdeck::TB_RIGHT,  // RIGHT = GPIO 2
+    tdeck::TB_PRESS    // PRESS = GPIO 0 (also BOOT button)
 };
 
 // Legacy aliases: V1 and V2 now both point to the same (correct) GPIO config
@@ -102,21 +102,21 @@ bool Trackball::probeGPIO() {
     // and reads HIGH when not pressed. GPIO 1 and 2 are trackball
     // LEFT and RIGHT, both with external pullups on T-Deck.
     // If these pins read HIGH (not floating/LOW), trackball is likely present.
-    pinMode(pins::TB_V2_UP,    INPUT_PULLUP);
-    pinMode(pins::TB_V2_DOWN,  INPUT_PULLUP);
-    pinMode(pins::TB_V2_LEFT,  INPUT_PULLUP);
-    pinMode(pins::TB_V2_RIGHT, INPUT_PULLUP);
-    pinMode(pins::TB_V2_PRESS, INPUT_PULLUP);
+    pinMode(tdeck::TB_UP,    INPUT_PULLUP);
+    pinMode(tdeck::TB_DOWN,  INPUT_PULLUP);
+    pinMode(tdeck::TB_LEFT,  INPUT_PULLUP);
+    pinMode(tdeck::TB_RIGHT, INPUT_PULLUP);
+    pinMode(tdeck::TB_PRESS, INPUT_PULLUP);
     delayMicroseconds(100);
 
     // All trackball GPIO pins should read HIGH with pullup when not pressed.
     // If they all read HIGH, trackball is likely connected.
     // This is not 100% conclusive (floating pins also read HIGH with pullup)
     // but combined with the I2C check first, it is sufficient.
-    bool all_high = (digitalRead(pins::TB_V2_UP)    == HIGH &&
-                     digitalRead(pins::TB_V2_DOWN)  == HIGH &&
-                     digitalRead(pins::TB_V2_LEFT)  == HIGH &&
-                     digitalRead(pins::TB_V2_RIGHT) == HIGH);
+    bool all_high = (digitalRead(tdeck::TB_UP)    == HIGH &&
+                     digitalRead(tdeck::TB_DOWN)  == HIGH &&
+                     digitalRead(tdeck::TB_LEFT)  == HIGH &&
+                     digitalRead(tdeck::TB_RIGHT) == HIGH);
 
     // GPIO 0 is the BOOT button and reads LOW during boot.
     // After boot, it reads HIGH with pullup when not pressed.
@@ -237,8 +237,8 @@ void Trackball::tick() {
 
                 // Press detection: use GPIO 0 (BOOT/PRESS) for I2C sensor too
                 bool pressNow = false;
-                pinMode(pins::TB_V2_PRESS, INPUT_PULLUP);
-                if (!digitalRead(pins::TB_V2_PRESS)) {
+                pinMode(tdeck::TB_PRESS, INPUT_PULLUP);
+                if (!digitalRead(tdeck::TB_PRESS)) {
                     pressNow = true;
                 }
 

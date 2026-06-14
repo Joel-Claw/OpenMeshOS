@@ -9,7 +9,7 @@
 #include "ScreenMap.h"
 #include "ScreenSettings.h"
 #include "Theme.h"
-#include "../hardware/Board.h"
+#include "../hardware/IBoard.h"
 #include "../utils/Log.h"
 #include "../utils/Config.h"
 
@@ -92,13 +92,13 @@ void init() {
 
 void tick() {
     // Feed trackball input into encoder state
-    auto& board = Board::instance();
+    IBoard* board = oms::theBoard();
     int16_t dx, dy;
-    board.consumeTrackballDelta(dx, dy);
+    board->consumeTrackballDelta(dx, dy);
 
     // If map screen is active, give it raw input for pan/zoom
     if (ScreenMap::isActive()) {
-        ScreenMap::feedInput(dx, dy, board.consumeTrackballPress());
+        ScreenMap::feedInput(dx, dy, board->consumeTrackballPress());
     } else {
         // Trackball vertical = encoder rotation
         if (dy > 0) enc_diff += dy;
@@ -106,7 +106,7 @@ void tick() {
         if (dx != 0) enc_diff += dx; // horizontal also useful
 
         // Trackball press = encoder click
-        if (board.consumeTrackballPress()) {
+        if (board->consumeTrackballPress()) {
             enc_pressed = true;
         }
     }

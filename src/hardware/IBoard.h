@@ -20,6 +20,14 @@
 
 namespace oms {
 
+// Forward declarations for concrete input drivers.
+// These are board-specific types but all supported boards currently
+// share the same BBQ10KB keyboard and GPIO/I2C trackball drivers.
+// When we add boards with different input hardware, we'll introduce
+// abstract IKeyboard/ITrackball interfaces and migrate these accessors.
+class Keyboard;
+class Trackball;
+
 // ── Screen dimensions (set at compile time per target) ────────────
 // These are defined via build flags (DOMS_SCREEN_W, OMS_SCREEN_H)
 // but also available through IBoard for runtime queries.
@@ -163,6 +171,19 @@ public:
     /// Consume trackball/encoder delta since last call
     virtual void consumeTrackballDelta(int16_t& dx, int16_t& dy) = 0;
 
+    // ── Input drivers (board-specific) ───────────────────────────────
+    // Direct access to keyboard and trackball drivers.
+    // These return concrete types because we only support T-Deck boards
+    // right now. When we add boards with different input hardware,
+    // these will be replaced with abstract interface accessors.
+    //
+    // For now, callers should prefer IBoard virtual methods
+    // (consumeTrackballPress, consumeTrackballDelta, hasKeyboard)
+    // and only use these direct-access methods when the LVGL input
+    // bridge or other low-level code needs the concrete driver.
+    virtual Keyboard& keyboard() = 0;
+    virtual Trackball& trackball() = 0;
+
     // ── Screen dimensions ──────────────────────────────────────────
     /// Screen width in pixels (convenience accessor)
     uint16_t screenWidth() const { return displayConfig().width; }
@@ -170,6 +191,12 @@ public:
     /// Screen height in pixels (convenience accessor)
     uint16_t screenHeight() const { return displayConfig().height; }
 };
+
+// ── Global board accessor ─────────────────────────────────────────
+// Returns the singleton IBoard* created by BoardFactory::create().
+// Call this instead of Board::instance() or BoardTDeck::instance().
+// Available after setup() calls board->init().
+IBoard* theBoard();
 
 // ── Board Factory ──────────────────────────────────────────────────
 // Creates the correct IBoard implementation based on build flags.

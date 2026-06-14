@@ -23,7 +23,7 @@
 #include "../mesh/MeshService.h"
 #include "../mesh/TDeckBoard.h"
 #include "../mesh/BLECompanion.h"
-#include "../hardware/Board.h"
+#include "../hardware/IBoard.h"
 #include "../hardware/Notification.h"
 #include "../utils/Config.h"
 #include "../utils/Log.h"
@@ -198,19 +198,19 @@ static void execCommand(const char* cmd) {
         snprintf(buf, LINE_LEN, "PSRAM: %u KB", (unsigned)(ESP.getFreePsram() / 1024));
         addLine(buf);
     } else if (strcmp(cmd, "gps") == 0) {
-        if (oms::Board::instance().hasGPSFix()) {
+        if (oms::theBoard()->hasGPSFix()) {
             char buf[LINE_LEN];
             snprintf(buf, LINE_LEN, "GPS: %.6f %.6f",
-                     oms::Board::instance().gpsLat(),
-                     oms::Board::instance().gpsLng());
+                     oms::theBoard()->gpsLat(),
+                     oms::theBoard()->gpsLng());
             addLine(buf);
             snprintf(buf, LINE_LEN, "  Alt: %.0fm  Spd: %.1fkm/h",
-                     oms::Board::instance().gpsAltitude(),
-                     oms::Board::instance().gpsSpeed());
+                     oms::theBoard()->gpsAltitude(),
+                     oms::theBoard()->gpsSpeed());
             addLine(buf);
             snprintf(buf, LINE_LEN, "  Sats: %d  Age: %lus",
-                     oms::Board::instance().gpsSatellites(),
-                     (unsigned long)(oms::Board::instance().gpsAge() / 1000));
+                     oms::theBoard()->gpsSatellites(),
+                     (unsigned long)(oms::theBoard()->gpsAge() / 1000));
             addLine(buf);
         } else {
             addLine("GPS: no fix");

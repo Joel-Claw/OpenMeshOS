@@ -6,7 +6,7 @@
 #include <Arduino.h>
 #include <SPIFFS.h>
 #include "version.h"
-#include "hardware/Board.h"
+#include "hardware/IBoard.h"
 #include "hardware/KeyboardInput.h"
 #include "hardware/Notification.h"
 #include "mesh/MeshService.h"
@@ -54,7 +54,7 @@ void setup() {
     oms::NodeTracker::instance().loadWhitelist();
 
     // 2) Initialise board-level hardware (display, keyboard, trackball, LoRa, GPS)
-    oms::Board::instance().init();
+    oms::theBoard()->init();
 
     // 2b) Initialise notification system (audio + screen wake)
     oms::Notification::instance().init();
@@ -83,14 +83,14 @@ void setup() {
 // ── Loop ────────────────────────────────────────────────────────────
 void loop() {
     oms::Watchdog::feed();  // feed watchdog first thing
-    oms::Board::instance().tick();
-    s_kbInput.update(oms::Board::instance().keyboard());
+    oms::theBoard()->tick();
+    s_kbInput.update(oms::theBoard()->keyboard());
 
     // Feed trackball input to active screen
     {
         int16_t tbDx = 0, tbDy = 0;
-        oms::Board::instance().trackball().consumeDelta(tbDx, tbDy);
-        bool tbPress = oms::Board::instance().trackball().consumePress();
+        oms::theBoard()->consumeTrackballDelta(tbDx, tbDy);
+        bool tbPress = oms::theBoard()->consumeTrackballPress();
         if (oms::ui::ScreenMap::isActive()) {
             oms::ui::ScreenMap::feedInput(tbDx, tbDy, tbPress);
         }

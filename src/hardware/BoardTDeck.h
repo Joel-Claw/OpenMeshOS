@@ -173,9 +173,9 @@ public:
     bool consumeTrackballPress() override { return _trackball.consumePress(); }
     void consumeTrackballDelta(int16_t& dx, int16_t& dy) override { _trackball.consumeDelta(dx, dy); }
 
-    // ── Direct access to drivers (for migration compat) ───────────
-    Keyboard& keyboard() { return _keyboard; }
-    Trackball& trackball() { return _trackball; }
+    // ── Input drivers (IBoard override) ───────────────────────────────
+    Keyboard& keyboard() override { return _keyboard; }
+    Trackball& trackball() override { return _trackball; }
 
     /// Legacy singleton accessor (for gradual migration)
     static BoardTDeck& instance();
