@@ -8,6 +8,8 @@
   - Fixed: DISP_CS (4→12), DISP_DC (5→11), DISP_BL (2→42), SPI begin() params
   - **V1 trackball pins were WRONG**: GPIO 21=mic LRCK, 43=GPS TX, 44=GPS RX (not trackball)
   - All GPIO trackballs use pins 3,15,1,2,0 (confirmed by Meshtastic + LilyGo)
+  - **IBoard migration complete (June 15)**: Board.h/cpp deleted, replaced by IBoard.h + BoardTDeck.h/cpp
+  - Pin constants now in tdeck:: namespace inside BoardTDeck.h
 - [x] Create TFT_eSPI `User_Setup.h` for T-Deck ST7789 config
 - [x] Test first compile: `pio run -e t-deck` — compiles clean (870KB)
 - [x] Fix all compile errors — all resolved

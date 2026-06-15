@@ -44,8 +44,11 @@ pio run -e t-deck
 # Upload to device
 pio run -e t-deck -t upload
 
-# Host-side tests (no Arduino needed)
-g++ -std=c++14 -Wall -Wextra -o test_map_engine test/test_map_engine.cpp -lm
+# Host-side tests (all, no Arduino needed)
+./scripts/run_tests.sh
+
+# Individual test (example)
+g++ -std=c++14 -Wall -Wextra -Isrc -o test_map_engine test/test_map_engine.cpp -lm
 ./test_map_engine
 ```
 
