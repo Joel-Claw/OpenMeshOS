@@ -3,11 +3,15 @@
 //
 // Uses a lightweight JSON parser with escape handling for flat config.
 // No ArduinoJson dependency needed (saves ~16KB flash on ESP32-S3).
+// No Arduino String usage — all parsing uses fixed-size char buffers
+// and strstr/memchr to avoid DRAM fragmentation.
 // All config lives in /oms.cfg on SPIFFS.
 
 #include "Config.h"
 #include "Log.h"
 #include <SPIFFS.h>
+#include <cstring>
+#include <cstdlib>
 
 namespace oms {
 
@@ -38,6 +42,92 @@ static struct ConfigInit {
 
 const Config& config::get() { return s_cfg; }
 
+// ── Fixed-size JSON string finder ───────────────────────────────────
+// Finds "key":"value" in a flat JSON string, extracts value with
+// escape handling. Returns length of extracted value, 0 if not found.
+// dest is always null-terminated on return.
+static size_t findJsonString(const char* json, size_t jsonLen,
+                              const char* key, char* dest, size_t maxLen) {
+    // Build search pattern: "key":"
+    char pattern[48];
+    int plen = snprintf(pattern, sizeof(pattern), "\"%s\":\"", key);
+    if (plen <= 0 || (size_t)plen >= sizeof(pattern)) return 0;
+
+    const char* pos = std::strstr(json, pattern);
+    if (!pos) return 0;
+    pos += plen;  // skip past opening quote
+
+    // Extract value with escape handling
+    size_t outLen = 0;
+    for (const char* p = pos; *p && outLen < maxLen - 1; p++) {
+        if (*p == '\\') {
+            // Escape sequence
+            p++;
+            if (!*p) break;
+            switch (*p) {
+                case '"':  dest[outLen++] = '"';  break;
+                case '\\': dest[outLen++] = '\\'; break;
+                case 'n':  dest[outLen++] = '\n'; break;
+                case 'r':  dest[outLen++] = '\r'; break;
+                case 't':  dest[outLen++] = '\t'; break;
+                default:   dest[outLen++] = *p;   break;
+            }
+        } else if (*p == '"') {
+            // End of string value
+            break;
+        } else {
+            dest[outLen++] = *p;
+        }
+    }
+    dest[outLen] = '\0';
+    return outLen;
+}
+
+// ── Fixed-size JSON integer finder ──────────────────────────────────
+// Finds "key":<integer> in a flat JSON string. Returns defaultValue if not found.
+static int findJsonInt(const char* json, size_t jsonLen,
+                       const char* key, int defaultVal) {
+    char pattern[48];
+    int plen = snprintf(pattern, sizeof(pattern), "\"%s\":", key);
+    if (plen <= 0 || (size_t)plen >= sizeof(pattern)) return defaultVal;
+
+    const char* pos = std::strstr(json, pattern);
+    if (!pos) return defaultVal;
+    pos += plen;
+
+    // Skip whitespace
+    while (*pos == ' ' || *pos == '\n' || *pos == '\r' || *pos == '\t') pos++;
+
+    // Parse integer (allow negative)
+    bool negative = false;
+    if (*pos == '-') { negative = true; pos++; }
+    int val = 0;
+    while (*pos >= '0' && *pos <= '9') {
+        val = val * 10 + (*pos - '0');
+        pos++;
+    }
+    return negative ? -val : val;
+}
+
+// ── Fixed-size JSON boolean finder ──────────────────────────────────
+static bool findJsonBool(const char* json, size_t jsonLen,
+                          const char* key, bool defaultVal) {
+    char pattern[48];
+    int plen = snprintf(pattern, sizeof(pattern), "\"%s\":", key);
+    if (plen <= 0 || (size_t)plen >= sizeof(pattern)) return defaultVal;
+
+    const char* pos = std::strstr(json, pattern);
+    if (!pos) return defaultVal;
+    pos += plen;
+
+    // Skip whitespace
+    while (*pos == ' ' || *pos == '\n' || *pos == '\r' || *pos == '\t') pos++;
+
+    if (std::strncmp(pos, "true", 4) == 0) return true;
+    if (std::strncmp(pos, "false", 5) == 0) return false;
+    return defaultVal;
+}
+
 void config::init() {
     OMS_LOG("Config", "Loading config from %s", CONFIG_PATH);
 
@@ -53,96 +143,22 @@ void config::init() {
         return;
     }
 
-    // JSON parser with escape handling — reads flat config reliably
-    // without needing ArduinoJson dependency (saves ~16KB flash)
-    String json = f.readString();
+    // Read config file into fixed-size buffer — no Arduino String allocation
+    char json[512];
+    size_t len = f.readBytes(json, sizeof(json) - 1);
+    json[len] = '\0';
     f.close();
 
-    // Robust key=value extraction from flat JSON
-    // Handles escaped quotes and backslashes in string values
-    auto readString = [&](const char* key, char* dest, size_t maxLen) {
-        // Search for "key":" pattern
-        String searchKey = String("\"") + key + "\":\"";
-        int start = json.indexOf(searchKey);
-        if (start < 0) return;
-        start += searchKey.length();
-
-        // Find closing quote, respecting escaped characters
-        size_t outLen = 0;
-        for (int i = start; i < json.length() && outLen < maxLen - 1; i++) {
-            char c = json.charAt(i);
-            if (c == '\\') {
-                // Escape sequence
-                if (i + 1 < json.length()) {
-                    char next = json.charAt(i + 1);
-                    if (next == '"') { dest[outLen++] = '"'; i++; }
-                    else if (next == '\\') { dest[outLen++] = '\\'; i++; }
-                    else if (next == 'n') { dest[outLen++] = '\n'; i++; }
-                    else if (next == 'r') { dest[outLen++] = '\r'; i++; }
-                    else if (next == 't') { dest[outLen++] = '\t'; i++; }
-                    else { dest[outLen++] = next; i++; }
-                }
-            } else if (c == '"') {
-                // End of string
-                break;
-            } else {
-                dest[outLen++] = c;
-            }
-        }
-        dest[outLen] = '\0';
-    };
-
-    auto readInt = [&](const char* key, int defVal) -> int {
-        // Find key with exact boundary check to avoid partial matches
-        String searchKey = String("\"") + key + "\":";
-        int start = json.indexOf(searchKey);
-        if (start >= 0) {
-            start += searchKey.length();
-            // Skip whitespace
-            while (start < json.length() && (json.charAt(start) == ' ' || json.charAt(start) == '\n' || json.charAt(start) == '\r' || json.charAt(start) == '\t')) {
-                start++;
-            }
-            // Parse integer (allow negative)
-            bool negative = false;
-            int val = 0;
-            int i = start;
-            if (i < json.length() && json.charAt(i) == '-') {
-                negative = true;
-                i++;
-            }
-            while (i < json.length() && json.charAt(i) >= '0' && json.charAt(i) <= '9') {
-                val = val * 10 + (json.charAt(i) - '0');
-                i++;
-            }
-            return negative ? -val : val;
-        }
-        return defVal;
-    };
-
-    auto readBool = [&](const char* key, bool defVal) -> bool {
-        String searchKey = String("\"") + key + "\":";
-        int start = json.indexOf(searchKey);
-        if (start >= 0) {
-            start += searchKey.length();
-            // Skip whitespace
-            while (start < json.length() && (json.charAt(start) == ' ' || json.charAt(start) == '\n' || json.charAt(start) == '\r' || json.charAt(start) == '\t')) {
-                start++;
-            }
-            if (json.substring(start).startsWith("true")) return true;
-            if (json.substring(start).startsWith("false")) return false;
-        }
-        return defVal;
-    };
-
-    readString("radioRegion", s_cfg.radioRegion, sizeof(s_cfg.radioRegion));
-    readString("callsign", s_cfg.callsign, sizeof(s_cfg.callsign));
-    readString("mapTileDir", s_cfg.mapTileDir, sizeof(s_cfg.mapTileDir));
-    s_cfg.channel          = readInt("channel", 0);
-    s_cfg.brightness       = readInt("brightness", 200);
-    s_cfg.screenTimeoutSec = readInt("screenTimeoutSec", 30);
-    s_cfg.theme            = readInt("theme", 0);
-    s_cfg.notifySound      = readBool("notifySound", true);
-    s_cfg.txPower           = readInt("txPower", 17);
+    // Parse config values using fixed-size string operations
+    findJsonString(json, len, "radioRegion", s_cfg.radioRegion, sizeof(s_cfg.radioRegion));
+    findJsonString(json, len, "callsign", s_cfg.callsign, sizeof(s_cfg.callsign));
+    findJsonString(json, len, "mapTileDir", s_cfg.mapTileDir, sizeof(s_cfg.mapTileDir));
+    s_cfg.channel          = findJsonInt(json, len, "channel", 0);
+    s_cfg.brightness       = findJsonInt(json, len, "brightness", 200);
+    s_cfg.screenTimeoutSec = findJsonInt(json, len, "screenTimeoutSec", 30);
+    s_cfg.theme            = findJsonInt(json, len, "theme", 0);
+    s_cfg.notifySound      = findJsonBool(json, len, "notifySound", true);
+    s_cfg.txPower          = findJsonInt(json, len, "txPower", 17);
 
     OMS_LOG("Config", "Loaded: callsign=%s region=%s",
             s_cfg.callsign, s_cfg.radioRegion);

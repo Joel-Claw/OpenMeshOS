@@ -2,10 +2,12 @@
 // Copyright 2026 Joel Claw & contributors — WTFPL v2
 //
 // Saves crash backtrace to SPIFFS, reads it back on next boot.
+// No Arduino String usage — uses fixed-size char buffers.
 
 #include "CrashLog.h"
 #include "../utils/Log.h"
 #include <SPIFFS.h>
+#include <cstring>
 
 namespace oms {
 
@@ -15,15 +17,26 @@ bool CrashLog::hasCrash() {
     return SPIFFS.exists(CRASH_PATH);
 }
 
-String CrashLog::getCrashInfo() {
-    if (!SPIFFS.exists(CRASH_PATH)) return String();
+size_t CrashLog::getCrashInfo(char* buf, size_t bufLen) {
+    if (!buf || bufLen == 0) return 0;
+    buf[0] = '\0';
+
+    if (!SPIFFS.exists(CRASH_PATH)) return 0;
 
     File f = SPIFFS.open(CRASH_PATH, "r");
-    if (!f) return String("Failed to read crash log");
+    if (!f) {
+        const char* err = "Failed to read crash log";
+        size_t errLen = std::strlen(err);
+        if (errLen >= bufLen) errLen = bufLen - 1;
+        std::memcpy(buf, err, errLen);
+        buf[errLen] = '\0';
+        return errLen;
+    }
 
-    String info = f.readString();
+    size_t len = f.readBytes(buf, bufLen - 1);
+    buf[len] = '\0';
     f.close();
-    return info;
+    return len;
 }
 
 void CrashLog::clear() {
@@ -48,8 +61,11 @@ void CrashLog::installHandler() {
 void CrashLog::showCrashReport() {
     if (!hasCrash()) return;
 
-    String info = getCrashInfo();
-    OMS_LOG("CrashLog", "Previous crash detected:\n%s", info.c_str());
+    char info[CRASH_LOG_MAX];
+    size_t len = getCrashInfo(info, sizeof(info));
+    if (len > 0) {
+        OMS_LOG("CrashLog", "Previous crash detected:\n%s", info);
+    }
 
     // After showing, clear so it doesn't show again
     clear();

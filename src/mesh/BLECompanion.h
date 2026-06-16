@@ -132,6 +132,11 @@ private:
     // Status update interval (ms)
     static constexpr uint32_t STATUS_UPDATE_MS = 5000;
     uint32_t _lastStatusMs = 0;
+
+    // Rate limiting: minimum interval between BLE config writes (ms)
+    // Prevents DRAM fragmentation from rapid std::string allocation
+    static constexpr uint32_t CFG_WRITE_MIN_INTERVAL_MS = 1000;  // 1 second
+    uint32_t _lastCfgWriteMs = 0;
 };
 
 }  // namespace oms

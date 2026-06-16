@@ -324,6 +324,16 @@ void BLECompanion::buildStatusPayload(uint8_t* buf, size_t& len) {
 
 // ── handleConfigWrite ─────────────────────────────────────────────
 void BLECompanion::handleConfigWrite(BLECharacteristic* pChar) {
+    // Rate limit: minimum 1 second between config writes
+    // Prevents rapid BLE config changes from fragmenting DRAM
+    uint32_t now = millis();
+    if (now - _lastCfgWriteMs < CFG_WRITE_MIN_INTERVAL_MS) {
+        OMS_LOG("BLE", "Config write rate-limited (min %lums interval)",
+                (unsigned long)CFG_WRITE_MIN_INTERVAL_MS);
+        return;
+    }
+    _lastCfgWriteMs = now;
+
     std::string value = pChar->getValue();
     if (value.empty()) return;
 
