@@ -6,7 +6,6 @@
 
 #include "BLECompanion.h"
 #include "MeshService.h"
-#include "TDeckBoard.h"
 #include "../hardware/IBoard.h"
 #include "../hardware/Notification.h"
 #include "../utils/Log.h"
@@ -268,7 +267,7 @@ void BLECompanion::buildStatusPayload(uint8_t* buf, size_t& len) {
     // Battery voltage (mV)
     uint16_t battMv = 0;
     if (MeshService::instance().initialized()) {
-        battMv = (uint16_t)MeshService::instance().board().getBattMilliVolts();
+        battMv = theBoard()->batteryMilliVolts();
     }
     buf[len++] = battMv & 0xFF;
     buf[len++] = (battMv >> 8) & 0xFF;

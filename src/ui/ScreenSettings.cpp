@@ -26,7 +26,6 @@
 #include "../mesh/MeshService.h"
 #include "../mesh/NodeTracker.h"
 #include "../mesh/BLECompanion.h"
-#include "../mesh/TDeckBoard.h"
 #include "../hardware/IBoard.h"
 #include "../utils/Config.h"
 #include "../utils/ConfigExport.h"
@@ -231,7 +230,7 @@ void ScreenSettings::showDeviceInfo() {
 
     // Battery voltage (live)
     if (MeshService::instance().initialized()) {
-        uint16_t mv = MeshService::instance().board().getBattMilliVolts();
+        uint16_t mv = theBoard()->batteryMilliVolts();
         snprintf(buf, sizeof(buf), "Battery: %.2f V", mv / 1000.0f);
     } else {
         snprintf(buf, sizeof(buf), "Battery: --");
@@ -241,7 +240,7 @@ void ScreenSettings::showDeviceInfo() {
 
     // MCU temperature
     if (MeshService::instance().initialized()) {
-        float temp = MeshService::instance().board().getMCUTemperature();
+        float temp = theBoard()->mcuTemperature();
         snprintf(buf, sizeof(buf), "MCU temp: %.1f C", temp);
     } else {
         snprintf(buf, sizeof(buf), "MCU temp: --");

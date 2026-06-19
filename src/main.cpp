@@ -22,6 +22,7 @@
 #include "hardware/Watchdog.h"
 #include "hardware/CrashLog.h"
 #include "hardware/PowerManager.h"
+#include "hardware/HeapMonitor.h"
 
 static oms::KeyboardInput s_kbInput;
 
@@ -77,6 +78,9 @@ void setup() {
     // 7) Initialize power management (light sleep, dynamic frequency scaling)
     oms::PowerManager::instance().init();
 
+    // 8) Initialize heap monitoring (logs diagnostics every 60s)
+    oms::HeapMonitor::instance().init(60, 30000, 15000);
+
     OMS_LOG("main", "Ready");
 }
 
@@ -126,6 +130,9 @@ void loop() {
 
     // Deferred config save (SPIFFS wear minimization)
     oms::config::tick();
+
+    // Heap monitoring: periodic diagnostics + immediate alerts
+    oms::HeapMonitor::instance().tick();
 
     // Power: yield to idle task (may enter light sleep)
     oms::PowerManager::instance().idle();

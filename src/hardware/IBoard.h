@@ -151,6 +151,9 @@ public:
     /// Battery percentage estimate (0-100, -1 if unknown)
     virtual int batteryPercent() const = 0;
 
+    /// MCU internal temperature in degrees Celsius
+    virtual float mcuTemperature() const = 0;
+
     // ── Power ──────────────────────────────────────────────────────
     /// Reboot the device
     virtual void reboot() = 0;

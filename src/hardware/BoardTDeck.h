@@ -162,6 +162,7 @@ public:
     // ── Battery ───────────────────────────────────────────────────
     uint16_t batteryMilliVolts() const override;
     int batteryPercent() const override;
+    float mcuTemperature() const override;
 
     // ── Power ──────────────────────────────────────────────────────
     void reboot() override;

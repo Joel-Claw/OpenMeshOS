@@ -21,19 +21,6 @@ BoardTDeck& BoardTDeck::instance() {
     return s_boardTDeck;
 }
 
-// ── Global board accessor ──────────────────────────────────────────
-IBoard* theBoard() {
-    static IBoard* s_board = BoardFactory::create();
-    return s_board;
-}
-
-// ── BoardFactory ──────────────────────────────────────────────────
-IBoard* BoardFactory::create() {
-    // For now, only T-Deck is supported. When we add Heltec V3,
-    // RAK WisBlock, etc., this will use build flags to select.
-    return &s_boardTDeck;
-}
-
 // ── init ───────────────────────────────────────────────────────────
 void BoardTDeck::init() {
     OMS_LOG("Board", "Initialising T-Deck hardware");
@@ -174,6 +161,10 @@ int BoardTDeck::batteryPercent() const {
     if (mv >= 4200) return 100;
     if (mv <= 3200) return 0;
     return (int)((mv - 3200) * 100.0f / (4200 - 3200));
+}
+
+float BoardTDeck::mcuTemperature() const {
+    return temperatureRead();
 }
 
 // ── Power ──────────────────────────────────────────────────────────

@@ -18,3 +18,4 @@ test_gps_nmea
 test_map_engine
 test_spiffs_stress
 test_spiffs_integration
+test_iboard

@@ -10,12 +10,53 @@
 #include "Config.h"
 #include "Log.h"
 #include <SPIFFS.h>
+#include <esp_mac.h>
 #include <cstring>
 #include <cstdlib>
 
 namespace oms {
 
-static const char* CONFIG_PATH = "/oms.cfg";
+static const char* CONFIG_PATH     = "/oms.cfg";
+static const char* CONFIG_RAW_PATH = "/oms.cfg.raw";  // plaintext backup during migration
+
+// ── Config obfuscation ──────────────────────────────────────────────
+// XOR obfuscation using a key derived from the ESP32 MAC address.
+// This prevents casual browsing of config on SPIFFS but is NOT
+// cryptographic-grade. For true encryption, migrate to NVS with AES.
+// Key is 16 bytes: MD5-like mixing of the 6-byte MAC.
+
+static constexpr size_t OBFUSCATION_KEY_LEN = 16;
+static uint8_t s_obfKey[OBFUSCATION_KEY_LEN];
+static bool s_obfKeyReady = false;
+
+static void deriveObfuscationKey() {
+    uint8_t mac[6];
+    esp_read_mac(mac, ESP_MAC_WIFI_STA);
+    // Mix MAC bytes into a 16-byte key using simple reversible mixing
+    // This produces a unique key per device without needing flash encryption
+    for (int i = 0; i < 16; i++) {
+        s_obfKey[i] = mac[i % 6] ^ (mac[(i + 3) % 6] + i) ^ 0xA5;
+    }
+    s_obfKeyReady = true;
+}
+
+/// XOR a buffer in-place with the device-specific key.
+static void xorBuffer(uint8_t* buf, size_t len) {
+    if (!s_obfKeyReady) deriveObfuscationKey();
+    for (size_t i = 0; i < len; i++) {
+        buf[i] ^= s_obfKey[i % OBFUSCATION_KEY_LEN];
+    }
+}
+
+/// Check if a buffer looks like valid JSON (starts with '{')
+static bool looksLikeJson(const uint8_t* buf, size_t len) {
+    // Skip leading whitespace
+    for (size_t i = 0; i < len && i < 8; i++) {
+        if (buf[i] == '{') return true;
+        if (buf[i] > ' ') return false;  // non-whitespace, non-JSON
+    }
+    return false;
+}
 
 // ── Defaults ────────────────────────────────────────────────────────
 static Config s_cfg;
@@ -144,10 +185,35 @@ void config::init() {
     }
 
     // Read config file into fixed-size buffer — no Arduino String allocation
-    char json[512];
-    size_t len = f.readBytes(json, sizeof(json) - 1);
-    json[len] = '\0';
+    uint8_t buf[512];
+    size_t len = f.readBytes((char*)buf, sizeof(buf) - 1);
+    buf[len] = '\0';
     f.close();
+
+    // Try to decode as obfuscated first. If it produces valid JSON, use it.
+    // Otherwise, treat as plaintext (migration from older firmware).
+    char json[512];
+    bool obfuscated = false;
+
+    if (len > 0 && !looksLikeJson(buf, len)) {
+        // Looks like obfuscated data — decode in-place
+        xorBuffer(buf, len);
+        memcpy(json, buf, len + 1);
+        json[len] = '\0';
+        if (looksLikeJson((const uint8_t*)json, len)) {
+            obfuscated = true;
+            OMS_LOG("Config", "Decoded obfuscated config");
+        } else {
+            // Decoded but still not JSON — fall back to trying as plaintext
+            OMS_LOG("Config", "Obfuscated decode failed, trying plaintext");
+            memcpy(json, buf, len + 1);  // try raw bytes
+            json[len] = '\0';
+        }
+    } else {
+        // Plaintext JSON (legacy or freshly saved)
+        memcpy(json, buf, len + 1);
+        json[len] = '\0';
+    }
 
     // Parse config values using fixed-size string operations
     findJsonString(json, len, "radioRegion", s_cfg.radioRegion, sizeof(s_cfg.radioRegion));
@@ -160,8 +226,15 @@ void config::init() {
     s_cfg.notifySound      = findJsonBool(json, len, "notifySound", true);
     s_cfg.txPower          = findJsonInt(json, len, "txPower", 17);
 
-    OMS_LOG("Config", "Loaded: callsign=%s region=%s",
-            s_cfg.callsign, s_cfg.radioRegion);
+    OMS_LOG("Config", "Loaded: callsign=%s region=%s obfuscated=%s",
+            s_cfg.callsign, s_cfg.radioRegion, obfuscated ? "yes" : "no");
+
+    // If we loaded from plaintext, immediately re-save as obfuscated
+    // to migrate the file format on first boot after upgrade.
+    if (!obfuscated && len > 0) {
+        OMS_LOG("Config", "Migrating plaintext config to obfuscated format");
+        save();  // will write obfuscated
+    }
 }
 
 /// Write a JSON-safe escaped string to file.
@@ -184,17 +257,42 @@ static void writeJsonString(File& f, const char* str) {
 }
 
 void config::save() {
-    File f = SPIFFS.open(CONFIG_PATH, "w");
-    if (!f) {
-        OMS_LOG("Config", "Failed to write config!");
-        return;
+    // Build JSON plaintext into a buffer first, then XOR and write.
+    // This ensures the on-disk format is obfuscated with the device key.
+    char json[512];
+    int pos = 0;
+
+    // Format config as JSON into local buffer
+    pos += snprintf(json + pos, sizeof(json) - pos, "{\n");
+    pos += snprintf(json + pos, sizeof(json) - pos, "  \"radioRegion\": ");
+    // Inline writeJsonString for char buffer
+    {
+        json[pos++] = '"';
+        const char* s = s_cfg.radioRegion;
+        while (*s && pos < (int)sizeof(json) - 4) {
+            char c = *s++;
+            if (c == '"')       { json[pos++] = '\\'; json[pos++] = '"'; }
+            else if (c == '\\') { json[pos++] = '\\'; json[pos++] = '\\'; }
+            else if (c == '\n')  { json[pos++] = '\\'; json[pos++] = 'n'; }
+            else if ((uint8_t)c >= 0x20) { json[pos++] = c; }
+        }
+        json[pos++] = '"';
     }
-    f.print("{\n");
-    f.print("  \"radioRegion\": ");
-    writeJsonString(f, s_cfg.radioRegion);
-    f.print(",\n  \"callsign\": ");
-    writeJsonString(f, s_cfg.callsign);
-    f.printf(",\n  \"channel\": %d,\n"
+    pos += snprintf(json + pos, sizeof(json) - pos, ",\n  \"callsign\": ");
+    {
+        json[pos++] = '"';
+        const char* s = s_cfg.callsign;
+        while (*s && pos < (int)sizeof(json) - 4) {
+            char c = *s++;
+            if (c == '"')       { json[pos++] = '\\'; json[pos++] = '"'; }
+            else if (c == '\\') { json[pos++] = '\\'; json[pos++] = '\\'; }
+            else if (c == '\n')  { json[pos++] = '\\'; json[pos++] = 'n'; }
+            else if ((uint8_t)c >= 0x20) { json[pos++] = c; }
+        }
+        json[pos++] = '"';
+    }
+    pos += snprintf(json + pos, sizeof(json) - pos,
+        ",\n  \"channel\": %d,\n"
         "  \"brightness\": %d,\n"
         "  \"screenTimeoutSec\": %d,\n"
         "  \"notifySound\": %s,\n",
@@ -202,16 +300,45 @@ void config::save() {
         s_cfg.brightness,
         s_cfg.screenTimeoutSec,
         s_cfg.notifySound ? "true" : "false");
-    f.print("  \"mapTileDir\": ");
-    writeJsonString(f, s_cfg.mapTileDir);
-    f.printf(",\n  \"theme\": %d,\n"
+    pos += snprintf(json + pos, sizeof(json) - pos, "  \"mapTileDir\": ");
+    {
+        json[pos++] = '"';
+        const char* s = s_cfg.mapTileDir;
+        while (*s && pos < (int)sizeof(json) - 4) {
+            char c = *s++;
+            if (c == '"')       { json[pos++] = '\\'; json[pos++] = '"'; }
+            else if (c == '\\') { json[pos++] = '\\'; json[pos++] = '\\'; }
+            else if (c == '\n')  { json[pos++] = '\\'; json[pos++] = 'n'; }
+            else if ((uint8_t)c >= 0x20) { json[pos++] = c; }
+        }
+        json[pos++] = '"';
+    }
+    pos += snprintf(json + pos, sizeof(json) - pos,
+        ",\n  \"theme\": %d,\n"
         "  \"txPower\": %d\n"
         "}\n",
         s_cfg.theme,
         s_cfg.txPower
     );
+
+    // XOR obfuscate the buffer
+    size_t dataLen = (size_t)pos;
+    xorBuffer((uint8_t*)json, dataLen);
+
+    // Write obfuscated data to file
+    File f = SPIFFS.open(CONFIG_PATH, "w");
+    if (!f) {
+        OMS_LOG("Config", "Failed to write config!");
+        return;
+    }
+    size_t written = f.write((const uint8_t*)json, dataLen);
     f.close();
-    OMS_LOG("Config", "Config saved");
+
+    if (written != dataLen) {
+        OMS_LOG("Config", "WARNING: partial write %u/%u bytes",
+                (unsigned)written, (unsigned)dataLen);
+    }
+    OMS_LOG("Config", "Config saved (obfuscated, %u bytes)", (unsigned)dataLen);
 }
 
 void config::setCallsign(const char* cs) {

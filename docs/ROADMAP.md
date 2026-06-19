@@ -124,18 +124,20 @@ Goal: Support other ESP32-S3 LoRa devices.
   - [x] BoardFactory::create() returns correct IBoard* per build target
   - [x] Backward-compatible Board wrapper delegates to BoardTDeck
   - [x] Pin constants: tdeck:: namespace (new) with pins:: (deprecated compat)
-  - [x] Unit tests for IBoard (78 tests: pins, configs, caps, battery, haversine, RSSI)
+  - [x] Unit tests for IBoard (117 tests: T-Deck + Heltec V3 pins, configs, caps, battery, haversine, RSSI)
   - [x] TDeckBoard.cpp migrated to use tdeck:: namespace
   - [x] Migrate remaining callers from Board::instance() to BoardFactory::create()/theBoard()
   - [x] Migrate remaining callers from pins:: to tdeck::
   - [x] Remove Board.h compat wrapper (deleted in e16361e)
   - [x] `Board.h` becomes `BoardTDeck.h` (in hardware/)
-  - [ ] New `BoardGeneric.h` for Heltec V3, RAK WisBlock, etc.
+  - [x] New `BoardHeltecV3.h/cpp` for Heltec WiFi LoRa 32 V3 (ESP32-S3 + SX1262 + SSD1306 OLED)
+  - [x] BoardFactory moved to BoardFactory.cpp with #ifdef platform selection
+  - [x] Unit tests for Heltec V3 pin constants, BoardCaps, LoRaConfig, DisplayConfig
 - [ ] PlatformIO environments for:
-  - `t-deck` (current)
-  - `t-deck-plus` (GPS variant)
-  - `heltec-v3`
-  - `rak-wisblock`
+  - [x] `t-deck` (current)
+  - [x] `t-deck-plus` (GPS variant)
+  - [x] `heltec-v3` (ESP32-S3 + SX1262 + SSD1306 OLED)
+  - [ ] `rak-wisblock`
 - [ ] Display driver abstraction (different screens, different resolutions)
 - [ ] Input abstraction (some devices have no keyboard, only touch)
 - [ ] Build matrix in CI

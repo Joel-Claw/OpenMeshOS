@@ -27,7 +27,7 @@
 #include "../mesh/MeshService.h"
 #include "../mesh/MsgRingBuffer.h"
 #include "../mesh/BLECompanion.h"
-#include "../mesh/TDeckBoard.h"
+#include "../hardware/IBoard.h"
 #include "../hardware/Notification.h"
 #include "../utils/Log.h"
 #include "../version.h"
@@ -181,7 +181,7 @@ void ScreenHome::updateStatusBar() {
 
     // Battery voltage
     if (_battLabel) {
-        uint16_t mv = MeshService::instance().board().getBattMilliVolts();
+        uint16_t mv = theBoard()->batteryMilliVolts();
         float v = mv / 1000.0f;
         // Show battery icon based on voltage level
         const char* icon;

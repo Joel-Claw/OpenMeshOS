@@ -68,6 +68,32 @@ namespace tdeck_test {
     constexpr gpio_num_t BOOT_PIN    = 0;
 }
 
+// Pin constants from BoardHeltecV3.h (extracted for host testing)
+namespace heltec_v3_test {
+    constexpr gpio_num_t LORA_CS    = 8;
+    constexpr gpio_num_t LORA_RST   = 12;
+    constexpr gpio_num_t LORA_DIO1  = 14;
+    constexpr gpio_num_t LORA_BUSY  = 13;
+    constexpr gpio_num_t LORA_SCK   = 9;
+    constexpr gpio_num_t LORA_MISO  = 11;
+    constexpr gpio_num_t LORA_MOSI  = 10;
+
+    constexpr gpio_num_t OLED_SDA   = 17;
+    constexpr gpio_num_t OLED_SCL   = 18;
+    constexpr gpio_num_t OLED_RST   = 21;
+
+    constexpr gpio_num_t LED_PIN    = 35;
+    constexpr gpio_num_t VEXT_EN    = 36;
+    constexpr gpio_num_t BOOT_BTN   = 0;
+    constexpr gpio_num_t BAT_ADC    = 1;
+
+    constexpr gpio_num_t USER_SDA   = 41;
+    constexpr gpio_num_t USER_SCL   = 42;
+    constexpr gpio_num_t GPS_RX    = 47;
+    constexpr gpio_num_t GPS_TX    = 48;
+    constexpr gpio_num_t GPS_EN    = 26;
+}
+
 // ── Struct definitions (mirrored from IBoard.h for host testing) ────
 struct TestBoardCaps {
     bool hasKeyboard      : 1;
@@ -374,6 +400,120 @@ void test_rssi_classification() {
     CHECK(strcmp(classify(-86), "-") == 0, "RSSI -86 dBm = poor (-)");
 }
 
+// ── Heltec V3 pin constants tests ───────────────────────────────────
+void test_heltec_v3_pins() {
+    printf("\n=== Heltec V3 Pin Constants ===\n");
+
+    // LoRa SX1262 pins (differ from T-Deck!)
+    CHECK(heltec_v3_test::LORA_CS == 8, "LORA_CS must be GPIO 8");
+    CHECK(heltec_v3_test::LORA_RST == 12, "LORA_RST must be GPIO 12");
+    CHECK(heltec_v3_test::LORA_DIO1 == 14, "LORA_DIO1 must be GPIO 14");
+    CHECK(heltec_v3_test::LORA_BUSY == 13, "LORA_BUSY must be GPIO 13");
+    CHECK(heltec_v3_test::LORA_SCK == 9, "LORA_SCK must be GPIO 9");
+    CHECK(heltec_v3_test::LORA_MISO == 11, "LORA_MISO must be GPIO 11");
+    CHECK(heltec_v3_test::LORA_MOSI == 10, "LORA_MOSI must be GPIO 10");
+
+    // OLED I2C pins
+    CHECK(heltec_v3_test::OLED_SDA == 17, "OLED SDA must be GPIO 17");
+    CHECK(heltec_v3_test::OLED_SCL == 18, "OLED SCL must be GPIO 18");
+    CHECK(heltec_v3_test::OLED_RST == 21, "OLED RST must be GPIO 21");
+
+    // Power and LED
+    CHECK(heltec_v3_test::LED_PIN == 35, "LED must be GPIO 35");
+    CHECK(heltec_v3_test::VEXT_EN == 36, "VEXT_EN must be GPIO 36");
+    CHECK(heltec_v3_test::BOOT_BTN == 0, "BOOT_BTN must be GPIO 0");
+    CHECK(heltec_v3_test::BAT_ADC == 1, "BAT_ADC must be GPIO 1");
+
+    // Verify Heltec V3 pins differ from T-Deck for critical functions
+    CHECK(heltec_v3_test::LORA_CS != tdeck_test::LORA_CS,
+          "Heltec V3 LoRa CS must differ from T-Deck");
+    CHECK(heltec_v3_test::LORA_RST != tdeck_test::LORA_RST,
+          "Heltec V3 LoRa RST must differ from T-Deck");
+    CHECK(heltec_v3_test::LORA_SCK != tdeck_test::LORA_SCK,
+          "Heltec V3 LoRa SCK must differ from T-Deck");
+}
+
+// ── Heltec V3 BoardCaps tests ───────────────────────────────────────
+void test_heltec_v3_caps() {
+    printf("\n=== Heltec V3 BoardCaps ===\n");
+
+    // Heltec V3 is a minimal board: no keyboard, no trackball, no GPS, no SD card
+    TestBoardCaps heltecV3 = {
+        .hasKeyboard    = false,
+        .hasTrackball   = false,
+        .hasGPS         = false,
+        .hasSDCard      = false,
+        .hasBLE          = true,
+        .hasSpeaker      = false,
+        .hasTouchScreen  = false,
+        .hasBatteryADC   = true,
+        .hasLoRa         = true
+    };
+
+    CHECK(!heltecV3.hasKeyboard, "Heltec V3 has no keyboard");
+    CHECK(!heltecV3.hasTrackball, "Heltec V3 has no trackball");
+    CHECK(!heltecV3.hasGPS, "Heltec V3 has no built-in GPS");
+    CHECK(!heltecV3.hasSDCard, "Heltec V3 has no SD card");
+    CHECK(heltecV3.hasBLE, "Heltec V3 must have BLE");
+    CHECK(!heltecV3.hasSpeaker, "Heltec V3 has no speaker");
+    CHECK(!heltecV3.hasTouchScreen, "Heltec V3 has no touch screen");
+    CHECK(heltecV3.hasBatteryADC, "Heltec V3 must have battery ADC");
+    CHECK(heltecV3.hasLoRa, "Heltec V3 must have LoRa");
+}
+
+// ── Heltec V3 LoRa config tests ─────────────────────────────────────
+void test_heltec_v3_lora() {
+    printf("\n=== Heltec V3 LoRaConfig ===\n");
+
+    TestLoRaConfig heltec = {
+        .freqMHz = 868.0f,
+        .bwMHz   = 125.0f,
+        .sf       = 9,
+        .cr        = 5,
+        .txPower  = 22,  // Heltec V3 can do 22 dBm (vs 17 on T-Deck)
+        .csPin    = (uint8_t)heltec_v3_test::LORA_CS,
+        .dio1Pin  = (uint8_t)heltec_v3_test::LORA_DIO1,
+        .rstPin   = (uint8_t)heltec_v3_test::LORA_RST,
+        .busyPin  = (uint8_t)heltec_v3_test::LORA_BUSY,
+        .sckPin   = (uint8_t)heltec_v3_test::LORA_SCK,
+        .misoPin  = (uint8_t)heltec_v3_test::LORA_MISO,
+        .mosiPin  = (uint8_t)heltec_v3_test::LORA_MOSI
+    };
+
+    CHECK(heltec.freqMHz == 868.0f, "Heltec V3 EU868 frequency");
+    CHECK(heltec.txPower == 22, "Heltec V3 can TX at 22 dBm (SX1262 max)");
+    CHECK(heltec.csPin == 8, "LoRa CS on GPIO 8");
+    CHECK(heltec.dio1Pin == 14, "LoRa DIO1 on GPIO 14");
+    CHECK(heltec.rstPin == 12, "LoRa RST on GPIO 12");
+    CHECK(heltec.busyPin == 13, "LoRa BUSY on GPIO 13");
+}
+
+// ── Heltec V3 Display config tests ───────────────────────────────────
+void test_heltec_v3_display() {
+    printf("\n=== Heltec V3 DisplayConfig ===\n");
+
+    // SSD1306 OLED: 128x64, I2C (not SPI)
+    TestDisplayConfig heltec = {
+        .width   = 128,
+        .height  = 64,
+        .csPin   = 0,   // I2C, no CS
+        .dcPin   = 0,   // I2C, no DC
+        .rstPin   = 21,  // OLED RST
+        .blPin    = 0,   // No backlight
+        .sckPin   = 18,  // I2C SCL
+        .mosiPin  = 17,  // I2C SDA
+        .spiFreq  = 0    // Not SPI
+    };
+
+    CHECK(heltec.width == 128, "Heltec V3 screen width must be 128");
+    CHECK(heltec.height == 64, "Heltec V3 screen height must be 64");
+    CHECK(heltec.csPin == 0, "SSD1306 has no CS pin (I2C)");
+    CHECK(heltec.dcPin == 0, "SSD1306 has no DC pin (I2C)");
+    CHECK(heltec.rstPin == 21, "OLED RST on GPIO 21");
+    CHECK(heltec.blPin == 0, "SSD1306 has no backlight");
+    CHECK(heltec.spiFreq == 0, "SSD1306 uses I2C, not SPI");
+}
+
 // ── Main ────────────────────────────────────────────────────────────
 int main() {
     printf("OpenMeshOS IBoard Abstraction Unit Tests\n");
@@ -388,6 +528,10 @@ int main() {
     test_haversine();
     test_board_factory();
     test_rssi_classification();
+    test_heltec_v3_pins();
+    test_heltec_v3_caps();
+    test_heltec_v3_lora();
+    test_heltec_v3_display();
 
     printf("\n=========================================\n");
     printf("Results: %d passed, %d failed\n", s_pass, s_fail);

@@ -3,17 +3,26 @@
 //
 // MeshService wraps the MeshCore C++ library into a friendly API.
 // It owns the radio, identity, and message dispatch loop.
+//
+// Radio pin configuration comes from IBoard::loraConfig(), not hardcoded
+// defines. This allows different devices (T-Deck, Heltec V3, etc.)
+// to provide their own pin mappings and radio parameters.
 
 #include "MeshService.h"
 #include "TDeckBoard.h"
 #include "TDeckClock.h"
 #include "NodeTracker.h"
+#include "../hardware/IBoard.h"
 #include "../utils/Config.h"
 #include "../utils/Log.h"
 
 #include <SPIFFS.h>
 
-// LoRa radio config macros (needed by CustomSX1262.h std_init)
+// LoRa radio config macros — these are now fallback defaults only.
+// MeshService::init() uses IBoard::loraConfig() for actual values,
+// which are resolved at runtime from the board implementation.
+// The macros are kept here as documentation of the default values
+// and as fallbacks if a board doesn't override them.
 #ifndef LORA_FREQ
 #define LORA_FREQ         868.0f
 #endif
@@ -44,16 +53,6 @@
 #include <helpers/radiolib/CustomSX1262Wrapper.h>
 #include <helpers/radiolib/SX126xReset.h>
 
-// T-Deck SX1262 pin config — cross-referenced with official LilyGo T-Deck utilities.h
-// https://github.com/Xinyuan-LilyGO/T-Deck/blob/master/examples/UnitTest/utilities.h
-#define SX1262_CS    9
-#define SX1262_DIO1  45
-#define SX1262_RST   17
-#define SX1262_BUSY  13
-#define SX1262_SCK   40
-#define SX1262_MISO  38
-#define SX1262_MOSI  41
-
 namespace oms {
 
 // ── Static instance ────────────────────────────────────────────────
@@ -64,16 +63,16 @@ MeshService& MeshService::instance() {
 }
 
 // ── MeshCore components ─────────────────────────────────────────────
-static TDeckBoard*      s_board     = nullptr;
-static TDeckClock*      s_clock     = nullptr;
+static TDeckBoard*      s_meshBoard  = nullptr;
+static TDeckClock*       s_clock     = nullptr;
 static mesh::LocalIdentity* s_identity = nullptr;
-static IdentityStore*   s_idStore  = nullptr;
-static SimpleMeshTables* s_tables   = nullptr;
+static IdentityStore*    s_idStore  = nullptr;
+static SimpleMeshTables*  s_tables   = nullptr;
 static StaticPoolPacketManager* s_pktMgr = nullptr;
-static OpenMesh*        s_meshCore = nullptr;
-static CustomSX1262Wrapper* s_radio = nullptr;
-static ArduinoMillis*    s_millis   = nullptr;
-static RadioNoiseListener* s_rng   = nullptr;
+static OpenMesh*          s_meshCore = nullptr;
+static CustomSX1262Wrapper* s_radio  = nullptr;
+static ArduinoMillis*     s_millis   = nullptr;
+static RadioNoiseListener* s_rng    = nullptr;
 
 // SX1262 radio (MeshCore's CustomSX1262 wraps RadioLib's SX1262)
 static SPIClass* s_loraSpi = nullptr;
@@ -113,29 +112,52 @@ void MeshService::init() {
     OMS_LOG("Mesh", "Initialising MeshCore stack");
 
     // ── Board and clock ───────────────────────────────────────────
-    _board = new TDeckBoard();
+    // IBoard is created by BoardFactory::create() via theBoard(),
+    // which selects the correct implementation based on build flags.
+    // MeshCore's MainBoard is a separate interface (TDeckBoard) that
+    // provides battery/temp/reboot to the mesh protocol stack.
+    IBoard* hwBoard = theBoard();
+
+    _meshBoard = new TDeckBoard();
     _clock = new TDeckClock();
 
-    OMS_LOG("Mesh", "Board: %s", _board->getManufacturerName());
-    OMS_LOG("Mesh", "ADC multiplier: %.2f", _board->getAdcMultiplier());
+    OMS_LOG("Mesh", "Board: %s", _meshBoard->getManufacturerName());
+    OMS_LOG("Mesh", "ADC multiplier: %.2f", _meshBoard->getAdcMultiplier());
 
     // ── SPI and Radio ────────────────────────────────────────────
+    // Get LoRa pin configuration from the board abstraction.
+    // This replaces the old hardcoded #define SX1262_CS etc.
+    const LoRaConfig lora = hwBoard->loraConfig();
+
+    OMS_LOG("Mesh", "LoRa pins: CS=%d DIO1=%d RST=%d BUSY=%d SCK=%d MISO=%d MOSI=%d",
+            lora.csPin, lora.dio1Pin, lora.rstPin, lora.busyPin,
+            lora.sckPin, lora.misoPin, lora.mosiPin);
+
     // Use HSPI for LoRa (VSPI is used by TFT)
     s_loraSpi = new SPIClass(HSPI);
-    s_loraSpi->begin(SX1262_SCK, SX1262_MISO, SX1262_MOSI, SX1262_CS);
+    s_loraSpi->begin(lora.sckPin, lora.misoPin, lora.mosiPin, lora.csPin);
 
-    // Create CustomSX1262 with T-Deck pin config
-    auto* mod = new Module(SX1262_CS, SX1262_DIO1, SX1262_RST, SX1262_BUSY, *s_loraSpi);
+    // Create CustomSX1262 with board-provided pin config
+    auto* mod = new Module(lora.csPin, lora.dio1Pin, lora.rstPin, lora.busyPin, *s_loraSpi);
     s_sx1262 = new CustomSX1262(mod);
 
-    // Get region config
+    // Get region config (from user settings, with board defaults as fallback)
     const RadioRegion* region = findRegion(config::get().radioRegion);
-    OMS_LOG("Mesh", "Region: %s, freq: %.1f MHz", region->name, region->freqMHz);
 
-    // Set DIO2 as RF switch (T-Deck hardware config)
+    // Determine radio parameters: region overrides board defaults
+    float freq = region->freqMHz;
+    float bw = region->bwMHz;
+    uint8_t sf = region->sf;
+    uint8_t cr = region->cr;
+    int8_t txPower = (int8_t)config::get().txPower;  // from config, clamped 5-22
+
+    OMS_LOG("Mesh", "Region: %s, freq: %.1f MHz, TX: %d dBm", region->name, freq, txPower);
+
+    // Set DIO2 as RF switch (required for most SX1262 boards)
     s_sx1262->setDio2AsRfSwitch(true);
 
-    // Init radio via std_init (uses LORA_* macros defined above)
+    // Init radio via std_init (uses LORA_* macros as compile-time defaults,
+    // then we override with runtime region config)
     bool radioOk = s_sx1262->std_init(s_loraSpi);
 
     if (!radioOk) {
@@ -144,11 +166,30 @@ void MeshService::init() {
         return;
     }
 
+    // Apply runtime region config on top of std_init defaults.
+    // std_init sets up the radio with LORA_* macro values, but the actual
+    // region may differ (e.g. US915 instead of EU868).
+    if (freq != LORA_FREQ || bw != LORA_BW || sf != LORA_SF || cr != LORA_CR) {
+        OMS_LOG("Mesh", "Applying region override: %.1f MHz, BW=%.1f, SF=%d, CR=%d",
+                freq, bw, sf, cr);
+        int status = s_sx1262->begin(freq, bw, sf, cr,
+                                      RADIOLIB_SX126X_SYNC_WORD_PRIVATE,
+                                      txPower, 16, 1.6f);
+        if (status != RADIOLIB_ERR_NONE) {
+            OMS_LOG("Mesh", "WARNING: region override failed (err=%d), using defaults", status);
+        }
+    }
+
+    // Apply TX power from config (may differ from std_init default)
+    if (txPower != LORA_TX_POWER) {
+        s_sx1262->setOutputPower(txPower);
+    }
+
     s_sx1262->setCRC(1);
     OMS_LOG("Mesh", "SX1262 radio initialised on %s", region->name);
 
     // ── CustomSX1262Wrapper (concrete RadioLibWrapper) ─────────────
-    s_radio = new CustomSX1262Wrapper(*s_sx1262, *_board);
+    s_radio = new CustomSX1262Wrapper(*s_sx1262, *_meshBoard);
 
     // ── RNG (radio noise for key generation) ──────────────────────
     s_rng = new RadioNoiseListener(*s_sx1262);

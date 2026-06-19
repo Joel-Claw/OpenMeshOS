@@ -21,9 +21,8 @@
 #include "ScreenHome.h"
 #include "Theme.h"
 #include "../mesh/MeshService.h"
-#include "../mesh/TDeckBoard.h"
-#include "../mesh/BLECompanion.h"
 #include "../hardware/IBoard.h"
+#include "../mesh/BLECompanion.h"
 #include "../hardware/Notification.h"
 #include "../utils/Config.h"
 #include "../utils/Log.h"
@@ -227,7 +226,7 @@ static void execCommand(const char* cmd) {
         }
     } else if (strcmp(cmd, "battery") == 0 || strcmp(cmd, "batt") == 0) {
         if (oms::MeshService::instance().initialized()) {
-            uint16_t mv = oms::MeshService::instance().board().getBattMilliVolts();
+            uint16_t mv = theBoard()->batteryMilliVolts();
             char buf[LINE_LEN];
             snprintf(buf, LINE_LEN, "Battery: %.2f V (%u mV)", mv / 1000.0f, mv);
             addLine(buf);

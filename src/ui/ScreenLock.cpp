@@ -21,7 +21,6 @@
 #include "ScreenHome.h"
 #include "Theme.h"
 #include "../mesh/MeshService.h"
-#include "../mesh/TDeckBoard.h"
 #include "../hardware/IBoard.h"
 #include "../utils/Config.h"
 #include "../utils/Log.h"
@@ -137,7 +136,7 @@ void ScreenLock::update() {
 
     // Battery and RSSI
     if (_battLabel && MeshService::instance().initialized()) {
-        uint16_t mv = MeshService::instance().board().getBattMilliVolts();
+        uint16_t mv = theBoard()->batteryMilliVolts();
         int rssi = MeshService::instance().rssi();
         char buf[32];
         snprintf(buf, sizeof(buf), LV_SYMBOL_BATTERY_FULL " %.1fV  " LV_SYMBOL_WIFI " %ddBm",
