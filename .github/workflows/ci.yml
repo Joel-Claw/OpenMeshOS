@@ -2,16 +2,16 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   pull_request:
-    branches: [main]
+    branches: [main, dev]
 
 jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        environment: [t-deck]
+        environment: [t-deck, heltec-v3]
 
     steps:
       - uses: actions/checkout@v4
@@ -42,6 +42,17 @@ jobs:
       - name: Build firmware
         run: pio run -e ${{ matrix.environment }}
 
+      - name: Set flash size from environment
+        id: flash
+        run: |
+          if [ "${{ matrix.environment }}" = "heltec-v3" ]; then
+            echo "size=8MB" >> $GITHUB_OUTPUT
+            echo "bytes=8388608" >> $GITHUB_OUTPUT
+          else
+            echo "size=16MB" >> $GITHUB_OUTPUT
+            echo "bytes=16777216" >> $GITHUB_OUTPUT
+          fi
+
       - name: Check firmware size
         run: |
           BUILD=".pio/build/${{ matrix.environment }}"
@@ -49,7 +60,7 @@ jobs:
           if [ -f "$FIRMWARE" ]; then
             SIZE=$(wc -c < "$FIRMWARE")
             echo "Firmware size: $SIZE bytes"
-            LIMIT=$((16777216 * 80 / 100))
+            LIMIT=$((${{ steps.flash.outputs.bytes }} * 80 / 100))
             if [ "$SIZE" -gt "$LIMIT" ]; then
               echo "::warning::Firmware size ($SIZE bytes) exceeds 80% of flash"
             fi
@@ -65,7 +76,7 @@ jobs:
           esptool.py --chip esp32s3 merge_bin \
             -o "$BUILD/openmeshos-merged.bin" \
             --flash_mode dio \
-            --flash_size 16MB \
+            --flash_size ${{ steps.flash.outputs.size }} \
             0x0 "$BUILD/bootloader.bin" \
             0x8000 "$BUILD/partitions.bin" \
             0x10000 "$BUILD/firmware.bin"
@@ -141,16 +152,22 @@ jobs:
       - name: Test tile download script --help
         run: python3 scripts/download_tiles.py --help
 
-  map-engine-tests:
+  host-tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build and run MapEngine tests
+      - name: Install g++ (C++14)
         run: |
-          g++ -std=c++14 -Wall -Wextra -o test_map_engine test/test_map_engine.cpp -lm
-          ./test_map_engine
+          sudo apt-get update
+          sudo apt-get install -y g++
 
-      - name: Verify all tests pass
+      - name: Run all host-side unit tests
         run: |
+          chmod +x scripts/run_tests.sh
+          bash scripts/run_tests.sh
+
+      - name: Verify MapEngine tests independently
+        run: |
+          g++ -std=c++14 -Wall -Wextra -Isrc -o test_map_engine test/test_map_engine.cpp -lm
           ./test_map_engine
