@@ -2,21 +2,18 @@
 // Copyright 2026 Joel Claw & contributors — WTFPL v2
 //
 // Initialises hardware, MeshCore, and the UI task loop.
+//
+// Two build paths:
+//   T-Deck builds    — Full UI (LVGL, keyboard, trackball, screens)
+//   Heltec V3 builds — Headless (mesh radio + BLE companion only, no UI)
 
 #include <Arduino.h>
 #include <SPIFFS.h>
 #include "version.h"
 #include "hardware/IBoard.h"
-#include "hardware/KeyboardInput.h"
-#include "hardware/Notification.h"
 #include "mesh/MeshService.h"
 #include "mesh/NodeTracker.h"
 #include "mesh/BLECompanion.h"
-#include "ui/UIScreen.h"
-#include "ui/ScreenHome.h"
-#include "ui/ScreenMap.h"
-#include "ui/ScreenLock.h"
-#include "ui/ScreenScanner.h"
 #include "utils/Log.h"
 #include "utils/Config.h"
 #include "hardware/Watchdog.h"
@@ -24,9 +21,24 @@
 #include "hardware/PowerManager.h"
 #include "hardware/HeapMonitor.h"
 
-static oms::KeyboardInput s_kbInput;
+// ── T-Deck-only includes (not available on Heltec V3 build) ─────────
+#ifndef OMS_PLATFORM_HELTEC_V3
+  #include "hardware/KeyboardInput.h"
+  #include "hardware/Notification.h"
+  #include "ui/UIScreen.h"
+  #include "ui/ScreenHome.h"
+  #include "ui/ScreenMap.h"
+  #include "ui/ScreenLock.h"
+  #include "ui/ScreenScanner.h"
 
-// ── Setup ───────────────────────────────────────────────────────────
+static oms::KeyboardInput s_kbInput;
+#endif
+
+// =============================================================================
+//  T-Deck / T-Deck Plus — Full UI firmware
+// =============================================================================
+#ifndef OMS_PLATFORM_HELTEC_V3
+
 void setup() {
     Serial.begin(115200);
     while (!Serial && millis() < 3000) { /* wait up to 3s for serial */ }
@@ -84,7 +96,6 @@ void setup() {
     OMS_LOG("main", "Ready");
 }
 
-// ── Loop ────────────────────────────────────────────────────────────
 void loop() {
     oms::Watchdog::feed();  // feed watchdog first thing
     oms::theBoard()->tick();
@@ -137,3 +148,78 @@ void loop() {
     // Power: yield to idle task (may enter light sleep)
     oms::PowerManager::instance().idle();
 }
+
+// =============================================================================
+//  Heltec WiFi LoRa 32 V3 — Headless mesh node / BLE companion
+// =============================================================================
+#else  // OMS_PLATFORM_HELTEC_V3
+
+void setup() {
+    Serial.begin(115200);
+    while (!Serial && millis() < 3000) { /* wait up to 3s for serial */ }
+
+    OMS_LOG("main", "OpenMeshOS v" OMS_VERSION_STRING " starting (Heltec V3, headless)");
+
+    // 0) Check for previous crash
+    if (oms::CrashLog::hasCrash()) {
+        oms::CrashLog::showCrashReport();
+    }
+    oms::CrashLog::installHandler();
+
+    // 1) Initialise SPIFFS
+    if (!SPIFFS.begin(true)) {
+        OMS_LOG("main", "WARNING: SPIFFS mount failed, formatting");
+        SPIFFS.format();
+        if (!SPIFFS.begin(true)) {
+            OMS_LOG("main", "ERROR: SPIFFS unavailable, some features will fail");
+        }
+    }
+
+    // 2) Load persistent config
+    oms::config::init();
+
+    // 3) Load whitelist from SPIFFS
+    oms::NodeTracker::instance().loadWhitelist();
+
+    // 4) Initialise board hardware (LoRa SPI, LED, battery ADC, OLED reset)
+    oms::theBoard()->init();
+
+    // 5) Initialise MeshCore radio + protocol stack
+    oms::MeshService::instance().init();
+
+    // 6) Initialise BLE companion service
+    oms::BLECompanion::instance().init();
+
+    // 7) Start watchdog (30s timeout)
+    oms::Watchdog::init(30);
+
+    // 8) Power management
+    oms::PowerManager::instance().init();
+
+    // 9) Heap monitoring
+    oms::HeapMonitor::instance().init(60, 20000, 10000);
+
+    OMS_LOG("main", "Ready (headless mode: mesh + BLE)");
+}
+
+void loop() {
+    oms::Watchdog::feed();
+    oms::theBoard()->tick();
+
+    // MeshCore protocol tick
+    oms::MeshService::instance().tick();
+
+    // BLE companion tick
+    oms::BLECompanion::instance().tick();
+
+    // Deferred config save
+    oms::config::tick();
+
+    // Heap monitoring
+    oms::HeapMonitor::instance().tick();
+
+    // Power: yield to idle
+    oms::PowerManager::instance().idle();
+}
+
+#endif  // OMS_PLATFORM_HELTEC_V3

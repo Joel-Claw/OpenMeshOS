@@ -17,8 +17,11 @@
 #pragma once
 
 #include <Arduino.h>
-#include <driver/i2s.h>
-#include "BoardTDeck.h"
+
+#ifndef OMS_PLATFORM_HELTEC_V3
+  #include <driver/i2s.h>
+  #include "BoardTDeck.h"
+#endif
 
 namespace oms {
 
@@ -70,6 +73,7 @@ public:
 private:
     Notification() = default;
 
+#ifndef OMS_PLATFORM_HELTEC_V3
     /// Generate a sine wave buffer at the given frequency and volume.
     /// Returns the number of samples written.
     size_t generateSine(int16_t* buf, size_t sampleCount,
@@ -93,6 +97,7 @@ private:
     // Audio parameters
     static constexpr uint32_t kSampleRate = 8000;  // 8kHz sample rate (sufficient for beeps)
     static constexpr size_t kBufferSize = 1600;     // 200ms at 8kHz (int16 mono)
+#endif
 
     bool _i2sRunning = false;
     bool _soundEnabled = true;
