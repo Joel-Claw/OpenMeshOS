@@ -48,9 +48,11 @@
   - [x] `getBattMilliVolts()` — ADC on GPIO1
   - [x] `getMCUTemperature()` — ESP32 internal temp
 
-## OpenMeshChat (Future Upgrade Path)
+## OpenMeshChat Integration
 
 - [x] OpenMeshChat class created (BaseChatMesh subclass)
+- [x] Fix getContactByIdx to return correct contact by index (was always returning first)
+- [x] Add file header (magic+version+count) to contacts persistence
 - [ ] Refactor MeshService to use OpenMeshChat instead of OpenMesh (Mesh subclass)
 - [ ] Benefits: automatic contact discovery, group channels with PSK, DM ACKs
 - [ ] Requires: MessageBus adaptation, UI callback migration
