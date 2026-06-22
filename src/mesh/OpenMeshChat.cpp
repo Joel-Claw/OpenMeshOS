@@ -127,8 +127,15 @@ int OpenMeshChat::getContactCount() const {
 }
 
 bool OpenMeshChat::getContactByIdx(int idx, ContactInfo& out) {
+    if (idx < 0 || idx >= getNumContacts()) return false;
+
     ContactsIterator iter;
-    return iter.hasNext(const_cast<OpenMeshChat*>(this), out);
+    ContactInfo tmp;
+    for (int i = 0; i <= idx; i++) {
+        if (!iter.hasNext(this, tmp)) return false;
+    }
+    out = tmp;
+    return true;
 }
 
 ContactInfo* OpenMeshChat::findContact(const char* namePrefix) {
@@ -239,6 +246,14 @@ void OpenMeshChat::saveContacts() {
         return;
     }
 
+    // File header: magic + version + count
+    const uint32_t magic = 0x4F4D5343;  // "OMSC"
+    const uint16_t version = 1;
+    uint16_t count = (uint16_t)getNumContacts();
+    file.write((uint8_t*)&magic, 4);
+    file.write((uint8_t*)&version, 2);
+    file.write((uint8_t*)&count, 2);
+
     ContactsIterator iter;
     ContactInfo c;
     uint8_t unused = 0;
@@ -266,7 +281,22 @@ void OpenMeshChat::loadContacts() {
     File file = _fs->open("/contacts");
     if (!file) return;
 
-    while (true) {
+    // Read and verify header
+    uint32_t magic = 0;
+    uint16_t version = 0;
+    uint16_t savedCount = 0;
+    if (file.read((uint8_t*)&magic, 4) != 4) { file.close(); return; }
+    if (file.read((uint8_t*)&version, 2) != 2) { file.close(); return; }
+    if (file.read((uint8_t*)&savedCount, 2) != 2) { file.close(); return; }
+
+    if (magic != 0x4F4D5343) {
+        // Old format without header — close and start fresh
+        OMS_LOG("Mesh", "Contacts file has old format, starting fresh");
+        file.close();
+        return;
+    }
+
+    for (uint16_t i = 0; i < savedCount; i++) {
         ContactInfo c;
         uint8_t pub_key[32];
         uint8_t unused;
