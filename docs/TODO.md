@@ -53,10 +53,15 @@
 - [x] OpenMeshChat class created (BaseChatMesh subclass)
 - [x] Fix getContactByIdx to return correct contact by index (was always returning first)
 - [x] Add file header (magic+version+count) to contacts persistence
-- [ ] Refactor MeshService to use OpenMeshChat instead of OpenMesh (Mesh subclass)
-- [ ] Benefits: automatic contact discovery, group channels with PSK, DM ACKs
-- [ ] Requires: MessageBus adaptation, UI callback migration
-- [ ] See src/mesh/OpenMeshChat.h for full integration notes
+- [x] Refactor MeshService to use OpenMeshChat instead of OpenMesh (Mesh subclass)
+- [x] Message callback bridge: OpenMeshChat → MessageBus → UI (UI screens unchanged)
+- [x] NodeTracker fed from OpenMeshChat::onDiscoveredContact
+- [x] sendChannel uses OpenMeshChat::sendChannelMessage (PSK group channel)
+- [x] sendDirect uses OpenMeshChat::sendDirectMessage (with contact lookup)
+- [x] Build passes on t-deck and heltec-v3
+- [x] All host-side tests pass (7/7)
+- [ ] Benefits to verify on hardware: automatic contact discovery, group channels with PSK, DM ACKs
+- [ ] Send periodic adverts (sendAdvert) on a timer in the main loop
   - [x] `reboot()` — ESP.restart()
   - [x] `getResetReason()` — esp_reset_reason()
   - [x] `getManufacturerName()` — return "LilyGo"

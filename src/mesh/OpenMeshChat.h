@@ -62,7 +62,7 @@ using MessageCallback = void(*)(const ChatMessage& msg);
 
 class OpenMeshChat : public BaseChatMesh {
 public:
-    OpenMeshChat(mesh::Radio& radio, mesh::MillisecondClock& ms, StdRNG& rng,
+    OpenMeshChat(mesh::Radio& radio, mesh::MillisecondClock& ms, mesh::RNG& rng,
                  mesh::RTCClock& rtc, StaticPoolPacketManager& pktMgr,
                  SimpleMeshTables& tables);
 

@@ -5,6 +5,10 @@
 // This is the bridge between MeshCore's protocol stack and OpenMeshOS UI.
 
 #include "OpenMeshChat.h"
+#include "MeshService.h"
+#include "MessageBus.h"
+#include "NodeTracker.h"
+#include "../hardware/Notification.h"
 #include "../utils/Config.h"
 #include "../utils/Log.h"
 #include <SPIFFS.h>
@@ -12,7 +16,7 @@
 namespace oms {
 
 // ── Constructor ────────────────────────────────────────────────────
-OpenMeshChat::OpenMeshChat(mesh::Radio& radio, mesh::MillisecondClock& ms, StdRNG& rng,
+OpenMeshChat::OpenMeshChat(mesh::Radio& radio, mesh::MillisecondClock& ms, mesh::RNG& rng,
                            mesh::RTCClock& rtc, StaticPoolPacketManager& pktMgr,
                            SimpleMeshTables& tables)
     : BaseChatMesh(radio, ms, rng, rtc, pktMgr, tables)
@@ -147,6 +151,13 @@ ContactInfo* OpenMeshChat::findContact(const char* namePrefix) {
 void OpenMeshChat::onDiscoveredContact(ContactInfo& contact, bool is_new, uint8_t path_len, const uint8_t* path) {
     OMS_LOG("Mesh", "Advert from %s (type=%d, path_len=%d, %s)",
             contact.name, contact.type, path_len, is_new ? "NEW" : "known");
+
+    // Feed NodeTracker so scanner and map screens stay updated
+    int rssi = MeshService::instance().rssi();
+    NodeTracker::instance().onAdvert(
+        contact.id.pub_key, contact.type, contact.name,
+        contact.gps_lat, contact.gps_lon, rssi);
+
     saveContacts();
 }
 

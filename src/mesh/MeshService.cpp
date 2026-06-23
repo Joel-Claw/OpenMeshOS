@@ -7,6 +7,12 @@
 // Radio pin configuration comes from IBoard::loraConfig(), not hardcoded
 // defines. This allows different devices (T-Deck, Heltec V3, etc.)
 // to provide their own pin mappings and radio parameters.
+//
+// Uses OpenMeshChat (BaseChatMesh subclass) for higher-level mesh features:
+//   - Automatic contact discovery and persistence
+//   - Group channel support with PSK encryption
+//   - Direct message ACKs and timeout handling
+//   - Cleaner separation: chat logic in OpenMeshChat, UI in screens
 
 #include "MeshService.h"
 #include "TDeckBoard.h"
@@ -44,7 +50,10 @@
 #include <ed_25519.h>
 
 // MeshCore includes (must come after LORA_* macros)
-#include "OpenMesh.h"
+#include "OpenMeshChat.h"
+#include "MessageBus.h"
+#include "NodeTracker.h"
+#include "../hardware/Notification.h"
 #include <helpers/SimpleMeshTables.h>
 #include <helpers/StaticPoolPacketManager.h>
 #include <helpers/IdentityStore.h>
@@ -65,11 +74,9 @@ MeshService& MeshService::instance() {
 // ── MeshCore components ─────────────────────────────────────────────
 static TDeckBoard*      s_meshBoard  = nullptr;
 static TDeckClock*       s_clock     = nullptr;
-static mesh::LocalIdentity* s_identity = nullptr;
-static IdentityStore*    s_idStore  = nullptr;
 static SimpleMeshTables*  s_tables   = nullptr;
 static StaticPoolPacketManager* s_pktMgr = nullptr;
-static OpenMesh*          s_meshCore = nullptr;
+static OpenMeshChat*      s_chat     = nullptr;
 static CustomSX1262Wrapper* s_radio  = nullptr;
 static ArduinoMillis*     s_millis   = nullptr;
 static RadioNoiseListener* s_rng    = nullptr;
@@ -107,9 +114,30 @@ static const RadioRegion* findRegion(const char* name) {
     return &s_regions[0];  // default EU868
 }
 
+// ── Chat message callback bridge ────────────────────────────────────
+// OpenMeshChat calls this when a message arrives. We bridge it into
+// the existing MessageBus so UI screens don't need to change.
+static void onChatMessage(const oms::ChatMessage& msg)
+{
+    InboxMessage inbox = {};
+    inbox.kind = msg.isDirect ? MsgKind::DirectMessage : MsgKind::GroupChannel;
+    inbox.channel_id = 0;  // public channel
+    strncpy(inbox.sender, msg.sender, sizeof(inbox.sender) - 1);
+    inbox.sender[sizeof(inbox.sender) - 1] = '\0';
+    strncpy(inbox.text, msg.text, sizeof(inbox.text) - 1);
+    inbox.text[sizeof(inbox.text) - 1] = '\0';
+    inbox.timestamp = msg.timestamp;
+    inbox.rssi = 0;  // filled by UI from MeshService::rssi()
+    MessageBus::inbox().push(inbox);
+
+    // Notification: beep and wake screen
+    Notification::instance().playTone(NotifyTone::MessageIn);
+    Notification::instance().wakeScreen();
+}
+
 // ── init ───────────────────────────────────────────────────────────
 void MeshService::init() {
-    OMS_LOG("Mesh", "Initialising MeshCore stack");
+    OMS_LOG("Mesh", "Initialising MeshCore chat stack");
 
     // ── Board and clock ───────────────────────────────────────────
     // IBoard is created by BoardFactory::create() via theBoard(),
@@ -197,34 +225,18 @@ void MeshService::init() {
     // ── MillisecondClock ─────────────────────────────────────────
     s_millis = new ArduinoMillis();
 
-    // ── Identity ──────────────────────────────────────────────────
-    // SPIFFS must be initialised before this (done in setup())
-    s_idStore = new IdentityStore(SPIFFS, "/mesh");
-    s_idStore->begin();
-
-    s_identity = new mesh::LocalIdentity();
-    const char* idName = config::get().callsign;
-
-    // Try loading existing identity
-    char displayName[32] = {0};
-    bool loaded = s_idStore->load(idName, *s_identity, displayName, sizeof(displayName));
-
-    if (!loaded) {
-        OMS_LOG("Mesh", "No identity found for '%s', generating new keypair", idName);
-        mesh::LocalIdentity newId(s_rng);
-        *s_identity = newId;
-        s_idStore->save(idName, *s_identity, idName);
-        OMS_LOG("Mesh", "New identity saved as '%s'", idName);
-    } else {
-        OMS_LOG("Mesh", "Identity loaded: '%s'", displayName);
-    }
-
     // ── Packet manager & dedup tables ─────────────────────────────
     s_pktMgr = new StaticPoolPacketManager(64);   // 64-packet pool
     s_tables  = new SimpleMeshTables();
 
-    // ── Create MeshCore Mesh object ───────────────────────────────
-    s_meshCore = new OpenMesh(
+    // ── Create OpenMeshChat (BaseChatMesh subclass) ────────────────
+    // OpenMeshChat provides higher-level features than raw OpenMesh:
+    //   - Automatic contact discovery and persistence
+    //   - Group channel support with PSK encryption
+    //   - Direct message ACKs and timeout handling
+    // Identity loading/generation and contact persistence are handled
+    // internally by OpenMeshChat::begin().
+    s_chat = new OpenMeshChat(
         *s_radio,
         *s_millis,
         *s_rng,
@@ -233,11 +245,14 @@ void MeshService::init() {
         *s_tables
     );
 
-    s_meshCore->self_id = *s_identity;
-    s_meshCore->begin();
+    // Register message callback before begin so we catch early messages
+    s_chat->onMessageReceived(onChatMessage);
+
+    // begin() loads identity from SPIFFS, loads contacts, sets up public channel
+    s_chat->begin(SPIFFS);
 
     _initialized = true;
-    OMS_LOG("Mesh", "MeshCore ready (region: %s, id: %s)", region->name, config::get().callsign);
+    OMS_LOG("Mesh", "OpenMeshChat ready (region: %s, id: %s)", region->name, config::get().callsign);
 }
 
 // ── tick ───────────────────────────────────────────────────────────
@@ -245,51 +260,38 @@ void MeshService::tick() {
     if (!_initialized) return;
 
     _clock->tick();
-    s_meshCore->loop();
+    s_chat->loop();
 }
 
 // ── Message API ────────────────────────────────────────────────────
 bool MeshService::sendChannel(const char* channel, const char* text) {
-    if (!_initialized) return false;
+    if (!_initialized || !s_chat) return false;
 
-    // Create a flood-routed text datagram for public channel
-    mesh::Identity broadcast;  // zero-initialised = broadcast
-    auto* pkt = s_meshCore->createDatagram(
-        PAYLOAD_TYPE_TXT_MSG,
-        broadcast,
-        nullptr,
-        (const uint8_t*)text,
-        strlen(text)
-    );
-
-    if (!pkt) return false;
-
-    s_meshCore->sendFlood(pkt);
-    return true;
+    // OpenMeshChat handles channel messaging with PSK encryption
+    // via the public group channel. The channel parameter is currently
+    // ignored (all messages go to the Public channel), but the API is
+    // preserved for future multi-channel support.
+    (void)channel;  // will be used when we add multiple channels
+    return s_chat->sendChannelMessage(text);
 }
 
 bool MeshService::sendDirect(const uint8_t* pubkey, const char* text) {
-    if (!_initialized || !pubkey) return false;
+    if (!_initialized || !pubkey || !s_chat) return false;
 
-    mesh::Identity dest(pubkey);
+    // Look up the contact by public key prefix. OpenMeshChat maintains
+    // a contact table from received adverts. We search by key prefix.
+    // For now, we search all contacts for a matching key prefix.
+    char prefix[8];
+    snprintf(prefix, sizeof(prefix), "%02X%02X%02X%02X",
+             pubkey[0], pubkey[1], pubkey[2], pubkey[3]);
+    ContactInfo* contact = s_chat->findContact(prefix);
+    if (!contact) {
+        OMS_LOG("Mesh", "DM send failed: contact not found for prefix %s", prefix);
+        return false;
+    }
 
-    // Calculate shared secret for encrypted DM
-    uint8_t secret[PUB_KEY_SIZE];
-    s_identity->calcSharedSecret(secret, dest);
-
-    auto* pkt = s_meshCore->createDatagram(
-        PAYLOAD_TYPE_TXT_MSG,
-        dest,
-        secret,
-        (const uint8_t*)text,
-        strlen(text)
-    );
-
-    if (!pkt) return false;
-
-    // Use flood routing for now (path discovery comes later)
-    s_meshCore->sendFlood(pkt);
-    return true;
+    int result = s_chat->sendDirectMessage(*contact, text);
+    return result != MSG_SEND_FAILED;
 }
 
 uint16_t MeshService::hopCount() const {
