@@ -23,6 +23,7 @@
 #include "../utils/Log.h"
 
 #include <SPIFFS.h>
+#include <esp_system.h>  // esp_random()
 
 // LoRa radio config macros — these are now fallback defaults only.
 // MeshService::init() uses IBoard::loraConfig() for actual values,
@@ -261,6 +262,20 @@ void MeshService::tick() {
 
     _clock->tick();
     s_chat->loop();
+
+    // Periodic advert: let other nodes discover us.
+    // Base interval is 5 minutes. On each cycle we pick a random jitter
+    // (+/- 60s) so multiple nodes booting together don't synchronise
+    // their adverts into a storm.
+    uint32_t now = millis();
+    if (now - _lastAdvertMs >= _advertDeadline) {
+        if (s_chat->sendAdvert()) {
+            _lastAdvertMs = now;
+            // Next deadline = base interval + random jitter in [-60s, +60s]
+            uint32_t jitter = (esp_random() % (2 * ADVERT_JITTER_MS));
+            _advertDeadline = ADVERT_INTERVAL_MS + jitter - ADVERT_JITTER_MS;
+        }
+    }
 }
 
 // ── Message API ────────────────────────────────────────────────────

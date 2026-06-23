@@ -50,6 +50,12 @@ private:
     TDeckBoard* _meshBoard = nullptr;
     TDeckClock* _clock = nullptr;
     OpenMeshChat* _chat = nullptr;
+
+    // Periodic advert timer (lets other nodes discover us)
+    static constexpr uint32_t ADVERT_INTERVAL_MS = 300000;  // 5 minutes base
+    static constexpr uint32_t ADVERT_JITTER_MS   = 60000;   // +/- 1 minute random jitter
+    uint32_t _lastAdvertMs = 0;
+    uint32_t _advertDeadline = 300000;  // first advert 5 min after boot
 };
 
 }  // namespace oms

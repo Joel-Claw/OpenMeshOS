@@ -61,7 +61,7 @@
 - [x] Build passes on t-deck and heltec-v3
 - [x] All host-side tests pass (7/7)
 - [ ] Benefits to verify on hardware: automatic contact discovery, group channels with PSK, DM ACKs
-- [ ] Send periodic adverts (sendAdvert) on a timer in the main loop
+- [x] Send periodic adverts (sendAdvert) on a timer in the main loop
   - [x] `reboot()` — ESP.restart()
   - [x] `getResetReason()` — esp_reset_reason()
   - [x] `getManufacturerName()` — return "LilyGo"
