@@ -137,7 +137,7 @@ Goal: Support other ESP32-S3 LoRa devices.
   - [x] `t-deck` (current)
   - [x] `t-deck-plus` (GPS variant)
   - [x] `heltec-v3` (ESP32-S3 + SX1262 + SSD1306 OLED)
-  - [x] `rak-wisblock` (RAK4631: nRF52840 + SX1262 + SSD1306 OLED) — board support files created, PlatformIO env added, main.cpp path added; full build requires adapting Config/MeshService for nRF52
+  - [x] `rak-wisblock` (RAK4631: nRF52840 + SX1262 + SSD1306 OLED) — board support files created, PlatformIO env added, main.cpp path added; Config/MeshService/HeapMonitor adapted for nRF52 via PlatformCompat abstraction
 - [ ] Display driver abstraction (different screens, different resolutions)
 - [ ] Input abstraction (some devices have no keyboard, only touch)
 - [ ] Build matrix in CI

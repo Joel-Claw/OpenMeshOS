@@ -23,7 +23,7 @@
 #include "../utils/Log.h"
 
 #include <SPIFFS.h>
-#include <esp_system.h>  // esp_random()
+#include "../hardware/PlatformCompat.h"
 
 // LoRa radio config macros — these are now fallback defaults only.
 // MeshService::init() uses IBoard::loraConfig() for actual values,
@@ -272,7 +272,9 @@ void MeshService::tick() {
         if (s_chat->sendAdvert()) {
             _lastAdvertMs = now;
             // Next deadline = base interval + random jitter in [-60s, +60s]
-            uint32_t jitter = (esp_random() % (2 * ADVERT_JITTER_MS));
+            uint32_t jitter_raw;
+            platform::fillRandom((uint8_t*)&jitter_raw, sizeof(jitter_raw));
+            uint32_t jitter = jitter_raw % (2 * ADVERT_JITTER_MS);
             _advertDeadline = ADVERT_INTERVAL_MS + jitter - ADVERT_JITTER_MS;
         }
     }

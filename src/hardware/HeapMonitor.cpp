@@ -6,7 +6,7 @@
 
 #include "HeapMonitor.h"
 #include "../utils/Log.h"
-#include <esp_heap_caps.h>
+#include "../hardware/PlatformCompat.h"
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
@@ -54,7 +54,7 @@ void HeapMonitor::tick() {
         _lastLogMs = now;
         OMS_LOG("Heap", "free=%u min=%u largestBlock=%u",
                 (unsigned)free, (unsigned)minFreeHeap(),
-                (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
+                (unsigned)platform::largestFreeBlock());
 
         // Also log task stacks with periodic heap report
         logAllStackHWM();
@@ -62,11 +62,11 @@ void HeapMonitor::tick() {
 }
 
 uint32_t HeapMonitor::freeHeap() const {
-    return esp_get_free_heap_size();
+    return platform::freeHeap();
 }
 
 uint32_t HeapMonitor::minFreeHeap() const {
-    return esp_get_minimum_free_heap_size();
+    return platform::minFreeHeap();
 }
 
 uint32_t HeapMonitor::stackHWM(TaskHandle_t task) const {

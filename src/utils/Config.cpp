@@ -10,7 +10,7 @@
 #include "Config.h"
 #include "Log.h"
 #include <SPIFFS.h>
-#include <esp_mac.h>
+#include "../hardware/PlatformCompat.h"
 #include <cstring>
 #include <cstdlib>
 
@@ -31,7 +31,7 @@ static bool s_obfKeyReady = false;
 
 static void deriveObfuscationKey() {
     uint8_t mac[6];
-    esp_read_mac(mac, ESP_MAC_WIFI_STA);
+    platform::readMacAddress(mac);
     // Mix MAC bytes into a 16-byte key using simple reversible mixing
     // This produces a unique key per device without needing flash encryption
     for (int i = 0; i < 16; i++) {
