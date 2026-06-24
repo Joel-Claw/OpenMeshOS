@@ -188,7 +188,10 @@ void setup() {
     // 6) Initialise BLE companion service
     oms::BLECompanion::instance().init();
 
-    // 7) Heap monitoring (nRF52 has 256KB RAM, no PSRAM)
+    // 7) Start watchdog (30s timeout)
+    Watchdog::init(30);
+
+    // 8) Heap monitoring (nRF52 has 256KB RAM, no PSRAM)
     //    Shorter alert threshold since there's less RAM to work with.
     oms::HeapMonitor::instance().init(60, 8000, 4000);
 
@@ -196,6 +199,7 @@ void setup() {
 }
 
 void loop() {
+    oms::Watchdog::feed();
     oms::theBoard()->tick();
 
     // MeshCore protocol tick

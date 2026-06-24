@@ -2,9 +2,15 @@
 // Copyright 2026 Joel Claw & contributors — WTFPL v2
 //
 // Hardware watchdog timer. Auto-reboots if loop() stalls >30s.
+// Platform-aware: ESP32 uses esp_task_wdt, nRF52 uses Nordic WDT peripheral.
 
 #pragma once
 
+#include <Arduino.h>
+
+#if defined(ARDUINO_ARCH_ESP32)
+
+// ── ESP32 implementation ─────────────────────────────────────────────
 #include <esp_task_wdt.h>
 
 namespace oms {
@@ -13,9 +19,6 @@ class Watchdog {
 public:
     static void init(uint32_t timeoutSec = 30) {
         OMS_LOG("Watchdog", "Starting, timeout=%lus", (unsigned long)timeoutSec);
-        // Old ESP-IDF API: esp_task_wdt_init(timeout, panic)
-        // New ESP-IDF 5.x API: esp_task_wdt_init(&config)
-        // The Arduino framework currently ships ESP-IDF 4.x style.
         esp_task_wdt_init(timeoutSec, true);  // panic on timeout
         esp_task_wdt_add(nullptr);  // add current task
     }
@@ -31,3 +34,68 @@ public:
 };
 
 }  // namespace oms
+
+#elif defined(ARDUINO_ARCH_NRF52840)
+
+// ── nRF52 implementation ─────────────────────────────────────────────
+// nRF52 WDT peripheral: 8-bit counter with configurable prescaler.
+// CRV (counter reload value) = timeout_seconds * 32768 (LFCLK frequency).
+// The WDT must be fed (RR[0] = 0x16E924D3) within the timeout period,
+// otherwise the system resets.
+//
+// Unlike ESP32's task watchdog, the nRF52 WDT is a single global watchdog.
+// We feed it from loop() directly.
+
+#include <nrf.h>
+
+namespace oms {
+
+class Watchdog {
+public:
+    static void init(uint32_t timeoutSec = 30) {
+        OMS_LOG("Watchdog", "Starting nRF52 WDT, timeout=%lus", (unsigned long)timeoutSec);
+        // Calculate CRV: timeout in seconds * LFCLK frequency (32768 Hz)
+        uint32_t crv = timeoutSec * 32768UL;
+        NRF_WDT->CONFIG = (WDT_CONFIG_HALT_Msk << WDT_CONFIG_HALT_Pos);  // pause when CPU halted
+        NRF_WDT->CRV = crv;
+        NRF_WDT->RREN = (WDT_RREN RR0_Msk << WDT_RREN_RR0_Pos);  // enable reload register 0
+        NRF_WDT->TASKS_START = 1;
+        _active = true;
+    }
+
+    static void feed() {
+        if (_active) {
+            NRF_WDT->RR[0] = 0x16E924D3UL;  // magic value to reload WDT
+        }
+    }
+
+    static void deinit() {
+        // nRF52 WDT cannot be stopped once started (hardware safety feature).
+        // The only way to "deinit" is to let it timeout (which resets the system).
+        // We just stop feeding it and let it expire naturally if needed.
+        // Actually, on nRF52, the WDT can be halted via the HALT bit in CONFIG.
+        NRF_WDT->CONFIG |= (WDT_CONFIG_HALT_KeepRunning << WDT_CONFIG_HALT_Pos);
+        _active = false;
+    }
+
+private:
+    inline static bool _active = false;
+};
+
+}  // namespace oms
+
+#else
+
+// ── Unknown platform stub ────────────────────────────────────────────
+namespace oms {
+
+class Watchdog {
+public:
+    static void init(uint32_t timeoutSec = 30) { (void)timeoutSec; }
+    static void feed() {}
+    static void deinit() {}
+};
+
+}  // namespace oms
+
+#endif
