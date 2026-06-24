@@ -3,9 +3,10 @@
 //
 // Initialises hardware, MeshCore, and the UI task loop.
 //
-// Two build paths:
+// Three build paths:
 //   T-Deck builds    — Full UI (LVGL, keyboard, trackball, screens)
 //   Heltec V3 builds — Headless (mesh radio + BLE companion only, no UI)
+//   RAK4631 builds    — Headless (mesh radio + BLE, nRF52 low-power platform)
 
 #include <Arduino.h>
 #include <SPIFFS.h>
@@ -150,6 +151,70 @@ void loop() {
 }
 
 // =============================================================================
+//  RAK WisBlock RAK4631 — Headless mesh node / BLE companion (nRF52840)
+// =============================================================================
+#elif defined(OMS_PLATFORM_RAK4631)
+
+void setup() {
+    Serial.begin(115200);
+    while (!Serial && millis() < 3000) { /* wait up to 3s for serial */ }
+
+    OMS_LOG("main", "OpenMeshOS v" OMS_VERSION_STRING " starting (RAK4631, headless nRF52)");
+
+    // 1) Initialise LittleFS (nRF52 doesn't have SPIFFS, uses LittleFS)
+    //    On nRF52 Arduino core, LittleFS is available via the built-in library.
+    //    We use the same SPIFFS API for compatibility — the nRF52 Arduino core
+    //    maps SPIFFS to LittleFS internally when on nRF52.
+    if (!SPIFFS.begin(true)) {
+        OMS_LOG("main", "WARNING: LittleFS mount failed, formatting");
+        SPIFFS.format();
+        if (!SPIFFS.begin(true)) {
+            OMS_LOG("main", "ERROR: LittleFS unavailable, some features will fail");
+        }
+    }
+
+    // 2) Load persistent config
+    oms::config::init();
+
+    // 3) Load whitelist from LittleFS
+    oms::NodeTracker::instance().loadWhitelist();
+
+    // 4) Initialise board hardware (LoRa SPI, LED, battery ADC)
+    oms::theBoard()->init();
+
+    // 5) Initialise MeshCore radio + protocol stack
+    oms::MeshService::instance().init();
+
+    // 6) Initialise BLE companion service
+    oms::BLECompanion::instance().init();
+
+    // 7) Heap monitoring (nRF52 has 256KB RAM, no PSRAM)
+    //    Shorter alert threshold since there's less RAM to work with.
+    oms::HeapMonitor::instance().init(60, 8000, 4000);
+
+    OMS_LOG("main", "Ready (RAK4631 headless mode: mesh + BLE)");
+}
+
+void loop() {
+    oms::theBoard()->tick();
+
+    // MeshCore protocol tick
+    oms::MeshService::instance().tick();
+
+    // BLE companion tick
+    oms::BLECompanion::instance().tick();
+
+    // Deferred config save
+    oms::config::tick();
+
+    // Heap monitoring
+    oms::HeapMonitor::instance().tick();
+
+    // nRF52 doesn't need explicit idle yield — the Arduino loop handles it.
+    // The nRF52 Arduino core automatically enters WFE between loop iterations.
+}
+
+// =============================================================================
 //  Heltec WiFi LoRa 32 V3 — Headless mesh node / BLE companion
 // =============================================================================
 #else  // OMS_PLATFORM_HELTEC_V3
@@ -222,4 +287,4 @@ void loop() {
     oms::PowerManager::instance().idle();
 }
 
-#endif  // OMS_PLATFORM_HELTEC_V3
+#endif  // OMS_PLATFORM_HELTEC_V3 / RAK4631

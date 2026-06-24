@@ -1,0 +1,11 @@
+# Name,   Type, SubType, Offset,  Size,    Flags
+# nRF52840 has 1MB internal flash. We allocate:
+#   - firmware: ~768KB (app + LittleFS data)
+#   - LittleFS: ~256KB for config, contacts, whitelist
+#
+# Note: nRF52 Arduino core uses a single partition by default.
+# This file is a placeholder for future custom partition support.
+# The nRF52 Arduino core may not use this file at all — it depends
+# on whether the board variant defines custom partitions.
+nrf52_fw, data, nrf52, 0x00000000, 0xC0000, 
+nrf52_lfs, data, nrf52, 0x000C0000, 0x40000,
