@@ -94,6 +94,57 @@ namespace heltec_v3_test {
     constexpr gpio_num_t GPS_EN    = 26;
 }
 
+// Pin constants from BoardRAK4631.h (extracted for host testing)
+namespace rak4631_test {
+    // LoRa SX1262 (dedicated SPI on RAK4630 stamp)
+    constexpr uint8_t LORA_CS      = 42;
+    constexpr uint8_t LORA_RST     = 38;
+    constexpr uint8_t LORA_DIO1    = 47;
+    constexpr uint8_t LORA_BUSY    = 46;
+    constexpr uint8_t LORA_SCK     = 43;
+    constexpr uint8_t LORA_MISO    = 45;
+    constexpr uint8_t LORA_MOSI    = 44;
+    constexpr uint8_t LORA_POWER_EN = 37;
+
+    // OLED display (SSD1306, I2C)
+    constexpr uint8_t OLED_SDA     = 13;
+    constexpr uint8_t OLED_SCL    = 14;
+
+    // LEDs
+    constexpr uint8_t LED_BLUE    = 35;
+    constexpr uint8_t LED_GREEN   = 36;
+
+    // Battery ADC (nRF52 SAADC on AIN3 = P0.05)
+    constexpr uint8_t BAT_ADC      = 5;
+
+    // WisBlock IO slots
+    constexpr uint8_t WB_IO1       = 17;
+    constexpr uint8_t WB_IO2       = 34;
+    constexpr uint8_t USER_BTN     = 33;
+
+    // I2C buses
+    constexpr uint8_t I2C1_SDA    = 13;
+    constexpr uint8_t I2C1_SCL    = 14;
+    constexpr uint8_t I2C2_SDA    = 24;
+    constexpr uint8_t I2C2_SCL    = 25;
+
+    // SPI bus (IO slot)
+    constexpr uint8_t SPI_CS       = 26;
+    constexpr uint8_t SPI_SCK     = 3;
+    constexpr uint8_t SPI_MISO    = 29;
+    constexpr uint8_t SPI_MOSI    = 30;
+
+    // GPS (optional external)
+    constexpr uint8_t GPS_RX       = 15;
+    constexpr uint8_t GPS_TX       = 16;
+
+    // SX1262 features
+    constexpr bool    DIO2_AS_RF_SWITCH = true;
+    constexpr float   DIO3_TCXO_VOLTAGE = 1.8f;
+    constexpr uint8_t CURRENT_LIMIT     = 140;
+    constexpr bool    RX_BOOSTED_GAIN   = true;
+}
+
 // ── Struct definitions (mirrored from IBoard.h for host testing) ────
 struct TestBoardCaps {
     bool hasKeyboard      : 1;
@@ -514,6 +565,157 @@ void test_heltec_v3_display() {
     CHECK(heltec.spiFreq == 0, "SSD1306 uses I2C, not SPI");
 }
 
+// ── RAK4631 pin constants tests ─────────────────────────────────────
+void test_rak4631_pins() {
+    printf("\n=== RAK4631 Pin Constants ===\n");
+
+    // LoRa SX1262 pins (RAK4630 stamp module)
+    CHECK(rak4631_test::LORA_CS == 42, "LORA_CS must be 42 (P_LORA_NSS)");
+    CHECK(rak4631_test::LORA_RST == 38, "LORA_RST must be 38 (P_LORA_RESET)");
+    CHECK(rak4631_test::LORA_DIO1 == 47, "LORA_DIO1 must be 47 (P_LORA_DIO_1)");
+    CHECK(rak4631_test::LORA_BUSY == 46, "LORA_BUSY must be 46 (P_LORA_BUSY)");
+    CHECK(rak4631_test::LORA_SCK == 43, "LORA_SCK must be 43 (P_LORA_SCLK)");
+    CHECK(rak4631_test::LORA_MISO == 45, "LORA_MISO must be 45 (P_LORA_MISO)");
+    CHECK(rak4631_test::LORA_MOSI == 44, "LORA_MOSI must be 44 (P_LORA_MOSI)");
+    CHECK(rak4631_test::LORA_POWER_EN == 37, "LORA_POWER_EN must be 37");
+
+    // OLED I2C pins
+    CHECK(rak4631_test::OLED_SDA == 13, "OLED SDA must be 13 (WB_I2C1_SDA)");
+    CHECK(rak4631_test::OLED_SCL == 14, "OLED SCL must be 14 (WB_I2C1_SCL)");
+
+    // LEDs
+    CHECK(rak4631_test::LED_BLUE == 35, "LED_BLUE must be 35 (PIN_LED1)");
+    CHECK(rak4631_test::LED_GREEN == 36, "LED_GREEN must be 36 (PIN_LED2)");
+
+    // Battery ADC
+    CHECK(rak4631_test::BAT_ADC == 5, "BAT_ADC must be 5 (AIN3 / WB_A0)");
+
+    // User button ( WisBlock IO)
+    CHECK(rak4631_test::USER_BTN == 33, "USER_BTN must be 33 (WB_SW1)");
+
+    // Verify RAK4631 pins differ from T-Deck for all LoRa pins
+    CHECK(rak4631_test::LORA_CS != tdeck_test::LORA_CS, "RAK4631 LoRa CS must differ from T-Deck");
+    CHECK(rak4631_test::LORA_RST != tdeck_test::LORA_RST, "RAK4631 LoRa RST must differ from T-Deck");
+    CHECK(rak4631_test::LORA_DIO1 != tdeck_test::LORA_DIO1, "RAK4631 LoRa DIO1 must differ from T-Deck");
+    CHECK(rak4631_test::LORA_BUSY != tdeck_test::LORA_BUSY, "RAK4631 LoRa BUSY must differ from T-Deck");
+    CHECK(rak4631_test::LORA_SCK != tdeck_test::LORA_SCK, "RAK4631 LoRa SCK must differ from T-Deck");
+    CHECK(rak4631_test::LORA_MISO != tdeck_test::LORA_MISO, "RAK4631 LoRa MISO must differ from T-Deck");
+    CHECK(rak4631_test::LORA_MOSI != tdeck_test::LORA_MOSI, "RAK4631 LoRa MOSI must differ from T-Deck");
+
+    // Verify RAK4631 pins also differ from Heltec V3
+    CHECK(rak4631_test::LORA_CS != heltec_v3_test::LORA_CS, "RAK4631 LoRa CS must differ from Heltec V3");
+    CHECK(rak4631_test::LORA_RST != heltec_v3_test::LORA_RST, "RAK4631 LoRa RST must differ from Heltec V3");
+    CHECK(rak4631_test::LORA_DIO1 != heltec_v3_test::LORA_DIO1, "RAK4631 LoRa DIO1 must differ from Heltec V3");
+    CHECK(rak4631_test::LORA_SCK != heltec_v3_test::LORA_SCK, "RAK4631 LoRa SCK must differ from Heltec V3");
+}
+
+// ── RAK4631 BoardCaps tests ──────────────────────────────────────────
+void test_rak4631_caps() {
+    printf("\n=== RAK4631 BoardCaps ===\n");
+
+    // RAK4631 is a minimal board: no keyboard, no trackball, no GPS, no SD card, no speaker
+    TestBoardCaps rak4631 = {
+        .hasKeyboard    = false,
+        .hasTrackball   = false,
+        .hasGPS         = false,
+        .hasSDCard      = false,
+        .hasBLE          = true,   // nRF52840 has BLE 5.0
+        .hasSpeaker      = false,
+        .hasTouchScreen  = false,
+        .hasBatteryADC   = true,  // SAADC on AIN3
+        .hasLoRa         = true   // SX1262
+    };
+
+    CHECK(!rak4631.hasKeyboard, "RAK4631 has no keyboard");
+    CHECK(!rak4631.hasTrackball, "RAK4631 has no trackball");
+    CHECK(!rak4631.hasGPS, "RAK4631 has no built-in GPS");
+    CHECK(!rak4631.hasSDCard, "RAK4631 has no SD card");
+    CHECK(rak4631.hasBLE, "RAK4631 must have BLE 5.0");
+    CHECK(!rak4631.hasSpeaker, "RAK4631 has no speaker");
+    CHECK(!rak4631.hasTouchScreen, "RAK4631 has no touch screen");
+    CHECK(rak4631.hasBatteryADC, "RAK4631 must have battery ADC (SAADC)");
+    CHECK(rak4631.hasLoRa, "RAK4631 must have LoRa (SX1262)");
+
+    // Verify RAK4631 has same minimal caps as Heltec V3 (both headless boards)
+    TestBoardCaps heltecV3 = {
+        .hasKeyboard    = false,
+        .hasTrackball   = false,
+        .hasGPS         = false,
+        .hasSDCard      = false,
+        .hasBLE          = true,
+        .hasSpeaker      = false,
+        .hasTouchScreen  = false,
+        .hasBatteryADC   = true,
+        .hasLoRa         = true
+    };
+    CHECK(rak4631.hasKeyboard == heltecV3.hasKeyboard, "RAK4631 and Heltec V3 both lack keyboard");
+    CHECK(rak4631.hasTrackball == heltecV3.hasTrackball, "RAK4631 and Heltec V3 both lack trackball");
+    CHECK(rak4631.hasBLE == heltecV3.hasBLE, "RAK4631 and Heltec V3 both have BLE");
+    CHECK(rak4631.hasLoRa == heltecV3.hasLoRa, "RAK4631 and Heltec V3 both have LoRa");
+}
+
+// ── RAK4631 LoRa config tests ──────────────────────────────────────────
+void test_rak4631_lora() {
+    printf("\n=== RAK4631 LoRaConfig ===\n");
+
+    TestLoRaConfig rak = {
+        .freqMHz = 868.0f,
+        .bwMHz   = 125.0f,
+        .sf       = 9,
+        .cr        = 5,
+        .txPower  = 22,  // SX1262 max 22 dBm
+        .csPin    = rak4631_test::LORA_CS,
+        .dio1Pin  = rak4631_test::LORA_DIO1,
+        .rstPin   = rak4631_test::LORA_RST,
+        .busyPin  = rak4631_test::LORA_BUSY,
+        .sckPin   = rak4631_test::LORA_SCK,
+        .misoPin  = rak4631_test::LORA_MISO,
+        .mosiPin  = rak4631_test::LORA_MOSI
+    };
+
+    CHECK(rak.freqMHz == 868.0f, "RAK4631 EU868 frequency");
+    CHECK(rak.txPower == 22, "RAK4631 can TX at 22 dBm (SX1262 max)");
+    CHECK(rak.csPin == 42, "RAK4631 LoRa CS on pin 42");
+    CHECK(rak.dio1Pin == 47, "RAK4631 LoRa DIO1 on pin 47");
+    CHECK(rak.rstPin == 38, "RAK4631 LoRa RST on pin 38");
+    CHECK(rak.busyPin == 46, "RAK4631 LoRa BUSY on pin 46");
+    CHECK(rak.sckPin == 43, "RAK4631 LoRa SCK on pin 43");
+    CHECK(rak.misoPin == 45, "RAK4631 LoRa MISO on pin 45");
+    CHECK(rak.mosiPin == 44, "RAK4631 LoRa MOSI on pin 44");
+
+    // SX1262 features: DIO2 as RF switch, DIO3 TCXO 1.8V (differs from T-Deck)
+    CHECK(rak4631_test::DIO2_AS_RF_SWITCH == true, "RAK4631 uses DIO2 as RF switch");
+    CHECK(rak4631_test::DIO3_TCXO_VOLTAGE == 1.8f, "RAK4631 DIO3 TCXO voltage is 1.8V");
+    CHECK(rak4631_test::CURRENT_LIMIT == 140, "RAK4631 current limit is 140mA");
+    CHECK(rak4631_test::RX_BOOSTED_GAIN == true, "RAK4631 has boosted RX gain");
+}
+
+// ── RAK4631 Display config tests ──────────────────────────────────────────
+void test_rak4631_display() {
+    printf("\n=== RAK4631 DisplayConfig ===\n");
+
+    // SSD1306 OLED: 128x64, I2C (same as Heltec V3)
+    TestDisplayConfig rak = {
+        .width   = 128,
+        .height  = 64,
+        .csPin   = 0,   // I2C, no CS
+        .dcPin   = 0,   // I2C, no DC
+        .rstPin   = -1,  // No reset pin (0xFF in header = -1)
+        .blPin    = 0,   // No backlight
+        .sckPin   = rak4631_test::I2C1_SCL,  // I2C SCL = 14
+        .mosiPin  = rak4631_test::I2C1_SDA,  // I2C SDA = 13
+        .spiFreq  = 0    // Not SPI
+    };
+
+    CHECK(rak.width == 128, "RAK4631 screen width must be 128");
+    CHECK(rak.height == 64, "RAK4631 screen height must be 64");
+    CHECK(rak.csPin == 0, "SSD1306 has no CS pin (I2C)");
+    CHECK(rak.dcPin == 0, "SSD1306 has no DC pin (I2C)");
+    CHECK(rak.rstPin == -1, "RAK4631 OLED has no reset pin");
+    CHECK(rak.blPin == 0, "SSD1306 has no backlight");
+    CHECK(rak.spiFreq == 0, "SSD1306 uses I2C, not SPI");
+}
+
 // ── Main ────────────────────────────────────────────────────────────
 int main() {
     printf("OpenMeshOS IBoard Abstraction Unit Tests\n");
@@ -532,6 +734,10 @@ int main() {
     test_heltec_v3_caps();
     test_heltec_v3_lora();
     test_heltec_v3_display();
+    test_rak4631_pins();
+    test_rak4631_caps();
+    test_rak4631_lora();
+    test_rak4631_display();
 
     printf("\n=========================================\n");
     printf("Results: %d passed, %d failed\n", s_pass, s_fail);

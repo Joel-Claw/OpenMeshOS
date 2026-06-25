@@ -188,10 +188,19 @@ void setup() {
     // 6) Initialise BLE companion service
     oms::BLECompanion::instance().init();
 
+    // 6a) Check for previous crash (nRF52 RESETREAS)
+    if (oms::CrashLog::hasCrash()) {
+        oms::CrashLog::showCrashReport();
+    }
+    oms::CrashLog::installHandler();
+
     // 7) Start watchdog (30s timeout)
     Watchdog::init(30);
 
-    // 8) Heap monitoring (nRF52 has 256KB RAM, no PSRAM)
+    // 8) Power management (nRF52 WFE idle)
+    oms::PowerManager::instance().init();
+
+    // 9) Heap monitoring (nRF52 has 256KB RAM, no PSRAM)
     //    Shorter alert threshold since there's less RAM to work with.
     oms::HeapMonitor::instance().init(60, 8000, 4000);
 
@@ -214,8 +223,8 @@ void loop() {
     // Heap monitoring
     oms::HeapMonitor::instance().tick();
 
-    // nRF52 doesn't need explicit idle yield — the Arduino loop handles it.
-    // The nRF52 Arduino core automatically enters WFE between loop iterations.
+    // Power: yield to idle (nRF52 enters WFE via FreeRTOS idle)
+    oms::PowerManager::instance().idle();
 }
 
 // =============================================================================
