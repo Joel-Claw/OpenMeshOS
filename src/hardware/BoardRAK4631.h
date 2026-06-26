@@ -31,6 +31,8 @@
 #pragma once
 
 #include "IBoard.h"
+#include "IDisplay.h"
+#include "IInput.h"
 #include "Trackball.h"
 #include "Keyboard.h"
 
@@ -155,6 +157,14 @@ public:
 
     void setBacklight(bool on) override;
     void setBrightness(int level) override;
+
+    // ── Display driver (IBoard override) ───────────────────────────────
+    // Returns nullptr until DisplaySSD1306 implementation is added.
+    IDisplay* display() override { return nullptr; }
+
+    // ── Input driver (IBoard override) ────────────────────────────────
+    // No keyboard/trackball on RAK4631 — input via BLE companion app.
+    IInput* input() override { return nullptr; }
 
     LoRaConfig loraConfig() const override {
         return LoRaConfig{

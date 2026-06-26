@@ -1,6 +1,6 @@
 # Roadmap — OpenMeshOS
 
-Current firmware version: **0.1.0-alpha.1** (first compile, not flashed to hardware)
+Current firmware version: **0.1.0-alpha.2** (first compile, not flashed to hardware)
 
 ## Phase 0: Foundation Cleanup (v0.1.0 — Current)
 
@@ -138,9 +138,9 @@ Goal: Support other ESP32-S3 LoRa devices.
   - [x] `t-deck-plus` (GPS variant)
   - [x] `heltec-v3` (ESP32-S3 + SX1262 + SSD1306 OLED)
   - [x] `rak-wisblock` (RAK4631: nRF52840 + SX1262 + SSD1306 OLED) — board support files created, PlatformIO env added, main.cpp path added; Config/MeshService/HeapMonitor adapted for nRF52 via PlatformCompat abstraction
-- [ ] Display driver abstraction (different screens, different resolutions)
-- [ ] Input abstraction (some devices have no keyboard, only touch)
-- [ ] Build matrix in CI
+- [x] Display driver abstraction (IDisplay.h: TFT SPI vs OLED I2C vs none)
+- [x] Input abstraction (IInput.h: keyboard + trackball + touch + serial)
+- [x] Build matrix in CI (t-deck, t-deck-plus, heltec-v3, rak-wisblock)
 
 ## Phase 5: Hardening (v1.0.0)
 

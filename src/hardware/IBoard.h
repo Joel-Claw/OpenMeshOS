@@ -20,13 +20,11 @@
 
 namespace oms {
 
-// Forward declarations for concrete input drivers.
-// These are board-specific types but all supported boards currently
-// share the same BBQ10KB keyboard and GPIO/I2C trackball drivers.
-// When we add boards with different input hardware, we'll introduce
-// abstract IKeyboard/ITrackball interfaces and migrate these accessors.
+// Forward declarations for abstract and concrete input/display drivers.
 class Keyboard;
 class Trackball;
+class IDisplay;
+class IInput;
 
 // ── Screen dimensions (set at compile time per target) ────────────
 // These are defined via build flags (DOMS_SCREEN_W, OMS_SCREEN_H)
@@ -82,6 +80,8 @@ struct DisplayConfig {
 ///   // ... throughout the app:
 ///   board->tick();
 ///   float lat = board->gpsLat();
+///   IDisplay* disp = board->display();
+///   IInput*   in   = board->input();
 ///
 /// Concrete implementations:
 ///   - BoardTDeck   (LilyGo T-Deck / T-Deck Plus)
@@ -108,6 +108,10 @@ public:
     // ── Display ────────────────────────────────────────────────────
     /// Display configuration (pins, dimensions, SPI freq)
     virtual DisplayConfig displayConfig() const = 0;
+
+    /// Abstract display driver (for LVGL integration)
+    /// Returns nullptr if the board has no display (headless mode).
+    virtual IDisplay* display() = 0;
 
     /// Set display backlight on/off
     virtual void setBacklight(bool on) = 0;
@@ -163,6 +167,11 @@ public:
 
     /// Get the ESP32 reset reason
     virtual uint32_t resetReason() const = 0;
+
+    // ── Input ───────────────────────────────────────────────────────
+    /// Abstract input driver (keyboard, trackball, touch)
+    /// Returns nullptr if the board has no input (pure repeater).
+    virtual IInput* input() = 0;
 
     // ── Input (delegates to concrete drivers) ──────────────────────
     /// Whether a physical keyboard is present

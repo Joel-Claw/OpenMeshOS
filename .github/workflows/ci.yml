@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        environment: [t-deck, heltec-v3]
+        environment: [t-deck, t-deck-plus, heltec-v3, rak-wisblock]
 
     steps:
       - uses: actions/checkout@v4
@@ -45,13 +45,23 @@ jobs:
       - name: Set flash size from environment
         id: flash
         run: |
-          if [ "${{ matrix.environment }}" = "heltec-v3" ]; then
-            echo "size=8MB" >> $GITHUB_OUTPUT
-            echo "bytes=8388608" >> $GITHUB_OUTPUT
-          else
-            echo "size=16MB" >> $GITHUB_OUTPUT
-            echo "bytes=16777216" >> $GITHUB_OUTPUT
-          fi
+          case "${{ matrix.environment }}" in
+            heltec-v3)
+              echo "size=8MB" >> $GITHUB_OUTPUT
+              echo "bytes=8388608" >> $GITHUB_OUTPUT
+              echo "platform=esp32" >> $GITHUB_OUTPUT
+              ;;
+            rak-wisblock)
+              echo "size=1MB" >> $GITHUB_OUTPUT
+              echo "bytes=1048576" >> $GITHUB_OUTPUT
+              echo "platform=nrf52" >> $GITHUB_OUTPUT
+              ;;
+            *)
+              echo "size=16MB" >> $GITHUB_OUTPUT
+              echo "bytes=16777216" >> $GITHUB_OUTPUT
+              echo "platform=esp32" >> $GITHUB_OUTPUT
+              ;;
+          esac
 
       - name: Check firmware size
         run: |
@@ -69,7 +79,8 @@ jobs:
             exit 1
           fi
 
-      - name: Build merged binary
+      - name: Build merged binary (ESP32 only)
+        if: steps.flash.outputs.platform == 'esp32'
         run: |
           BUILD=".pio/build/${{ matrix.environment }}"
           pip install esptool
@@ -89,6 +100,7 @@ jobs:
           path: |
             .pio/build/${{ matrix.environment }}/firmware.bin
             .pio/build/${{ matrix.environment }}/openmeshos-merged.bin
+          if-no-files-found: ignore
 
   lint:
     runs-on: ubuntu-latest

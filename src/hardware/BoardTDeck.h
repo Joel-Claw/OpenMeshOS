@@ -11,6 +11,8 @@
 #pragma once
 
 #include "IBoard.h"
+#include "IDisplay.h"
+#include "IInput.h"
 #include "Keyboard.h"
 #include "Trackball.h"
 
@@ -121,6 +123,12 @@ public:
         };
     }
 
+    // ── Display driver (IBoard override) ───────────────────────────────
+    // Returns nullptr until DisplayTFTeSPI implementation is added.
+    // UIScreen.cpp currently uses TFT_eSPI directly; migration to IDisplay
+    // will happen in a follow-up commit.
+    IDisplay* display() override { return nullptr; }
+
     void setBacklight(bool on) override {
         digitalWrite(tdeck::DISP_BL, on ? HIGH : LOW);
     }
@@ -168,6 +176,11 @@ public:
     void reboot() override;
     void powerOff() override;
     uint32_t resetReason() const override;
+
+    // ── Input driver (IBoard override) ───────────────────────────────
+    // Returns nullptr until InputTDeck implementation is added.
+    // Keyboard/Trackball are currently accessed via concrete accessors.
+    IInput* input() override { return nullptr; }
 
     // ── Input ──────────────────────────────────────────────────────
     bool hasKeyboard() const override { return _keyboard.isPresent(); }
