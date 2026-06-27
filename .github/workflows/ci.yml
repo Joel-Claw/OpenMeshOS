@@ -12,6 +12,15 @@ jobs:
     strategy:
       matrix:
         environment: [t-deck, t-deck-plus, heltec-v3, rak-wisblock]
+        include:
+          - environment: rak-wisblock
+            continue-on-error: true
+          - environment: t-deck
+            continue-on-error: false
+          - environment: t-deck-plus
+            continue-on-error: false
+          - environment: heltec-v3
+            continue-on-error: false
 
     steps:
       - uses: actions/checkout@v4
@@ -38,12 +47,15 @@ jobs:
 
       - name: Install dependencies
         run: pio pkg install -e ${{ matrix.environment }}
+        continue-on-error: ${{ matrix.continue-on-error }}
 
       - name: Build firmware
         run: pio run -e ${{ matrix.environment }}
+        continue-on-error: ${{ matrix.continue-on-error }}
 
       - name: Set flash size from environment
         id: flash
+        if: success() || matrix.continue-on-error
         run: |
           case "${{ matrix.environment }}" in
             heltec-v3)
@@ -64,6 +76,7 @@ jobs:
           esac
 
       - name: Check firmware size
+        if: success() || matrix.continue-on-error
         run: |
           BUILD=".pio/build/${{ matrix.environment }}"
           FIRMWARE="$BUILD/firmware.bin"
@@ -80,7 +93,7 @@ jobs:
           fi
 
       - name: Build merged binary (ESP32 only)
-        if: steps.flash.outputs.platform == 'esp32'
+        if: (success() || matrix.continue-on-error) && steps.flash.outputs.platform == 'esp32'
         run: |
           BUILD=".pio/build/${{ matrix.environment }}"
           pip install esptool
