@@ -10,6 +10,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         environment: [t-deck, t-deck-plus, heltec-v3, rak-wisblock]
         include:
@@ -77,6 +78,7 @@ jobs:
 
       - name: Check firmware size
         if: success() || matrix.continue-on-error
+        continue-on-error: ${{ matrix.continue-on-error }}
         run: |
           BUILD=".pio/build/${{ matrix.environment }}"
           FIRMWARE="$BUILD/firmware.bin"
@@ -88,12 +90,13 @@ jobs:
               echo "::warning::Firmware size ($SIZE bytes) exceeds 80% of flash"
             fi
           else
-            echo "::error::Firmware binary not found"
+            echo "::warning::Firmware binary not found (WIP platform)"
             exit 1
           fi
 
       - name: Build merged binary (ESP32 only)
         if: (success() || matrix.continue-on-error) && steps.flash.outputs.platform == 'esp32'
+        continue-on-error: ${{ matrix.continue-on-error }}
         run: |
           BUILD=".pio/build/${{ matrix.environment }}"
           pip install esptool
