@@ -25,7 +25,7 @@
 #include "Theme.h"
 #include "../mesh/MeshService.h"
 #include "../mesh/NodeTracker.h"
-#include "../mesh/BLECompanion.h"
+#include "../mesh/IBLECompanion.h"
 #include "../hardware/IBoard.h"
 #include "../utils/Config.h"
 #include "../utils/ConfigExport.h"
@@ -506,12 +506,12 @@ void ScreenSettings::showDisplay() {
 
     static lv_obj_t* s_bleSwitch = nullptr;
     s_bleSwitch = lv_switch_create(ble_row);
-    if (BLECompanion::instance().enabled()) {
+    if (theBLECompanion().enabled()) {
         lv_obj_add_state(s_bleSwitch, LV_STATE_CHECKED);
     }
     lv_obj_add_event_cb(s_bleSwitch, [](lv_event_t* e) {
         bool on = lv_obj_has_state(s_bleSwitch, LV_STATE_CHECKED);
-        BLECompanion::instance().setEnabled(on);
+        theBLECompanion().setEnabled(on);
         OMS_LOG("UI", "BLE: %s", on ? "on" : "off");
     }, LV_EVENT_VALUE_CHANGED, nullptr);
 }

@@ -22,7 +22,7 @@
 #include "Theme.h"
 #include "../mesh/MeshService.h"
 #include "../hardware/IBoard.h"
-#include "../mesh/BLECompanion.h"
+#include "../mesh/IBLECompanion.h"
 #include "../hardware/Notification.h"
 #include "../utils/Config.h"
 #include "../utils/Log.h"
@@ -215,11 +215,11 @@ static void execCommand(const char* cmd) {
             addLine("GPS: no fix");
         }
     } else if (strcmp(cmd, "ble") == 0) {
-        if (oms::BLECompanion::instance().enabled()) {
+        if (oms::theBLECompanion().enabled()) {
             addLine("BLE: active");
             char buf[LINE_LEN];
             snprintf(buf, LINE_LEN, "  Connected: %s",
-                     oms::BLECompanion::instance().isConnected() ? "yes" : "no");
+                     oms::theBLECompanion().isConnected() ? "yes" : "no");
             addLine(buf);
         } else {
             addLine("BLE: disabled");

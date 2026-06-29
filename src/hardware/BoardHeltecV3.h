@@ -22,6 +22,7 @@
 #include "IInput.h"
 #include "Trackball.h"
 #include "Keyboard.h"
+#include "DisplaySSD1306.h"
 
 namespace oms {
 
@@ -127,8 +128,8 @@ public:
     void setBrightness(int level) override;
 
     // ── Display driver (IBoard override) ───────────────────────────────
-    // Returns nullptr until DisplaySSD1306 implementation is added.
-    IDisplay* display() override { return nullptr; }
+    // Returns the SSD1306 OLED display driver.
+    IDisplay* display() override { return &_display; }
 
     // ── Input driver (IBoard override) ────────────────────────────────
     // No keyboard/trackball on Heltec V3 — input via BLE companion app.
@@ -202,6 +203,13 @@ private:
     // Stub drivers (never initialized, always report not-present)
     Trackball _stubTrackball;
     Keyboard _stubKeyboard;
+
+    // SSD1306 OLED display driver (128x64, I2C)
+    DisplaySSD1306 _display{128, 64,
+        (int8_t)heltec_v3::OLED_SDA,
+        (int8_t)heltec_v3::OLED_SCL,
+        (int8_t)heltec_v3::OLED_RST,
+        0x3C};
 
     // Battery ADC config
     float _adcMultiplier = 2.0f;  // Voltage divider ratio (matches T-Deck)

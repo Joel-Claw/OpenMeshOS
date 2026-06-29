@@ -14,7 +14,7 @@
 #include "hardware/IBoard.h"
 #include "mesh/MeshService.h"
 #include "mesh/NodeTracker.h"
-#include "mesh/BLECompanion.h"
+#include "mesh/IBLECompanion.h"
 #include "utils/Log.h"
 #include "utils/Config.h"
 #include "hardware/Watchdog.h"
@@ -77,7 +77,7 @@ void setup() {
     oms::MeshService::instance().init();
 
     // 3b) Initialise BLE companion service (after mesh is ready)
-    oms::BLECompanion::instance().init();
+    oms::theBLECompanion().init();
 
     // 4) Initialise UI (LVGL + screen driver)
     oms::ui::init();
@@ -116,7 +116,7 @@ void loop() {
     }
 
     oms::MeshService::instance().tick();
-    oms::BLECompanion::instance().tick();
+    oms::theBLECompanion().tick();
     oms::Notification::instance().tick();
     oms::ui::tick();
 
@@ -186,7 +186,7 @@ void setup() {
     oms::MeshService::instance().init();
 
     // 6) Initialise BLE companion service
-    oms::BLECompanion::instance().init();
+    oms::theBLECompanion().init();
 
     // 6a) Check for previous crash (nRF52 RESETREAS)
     if (oms::CrashLog::hasCrash()) {
@@ -215,7 +215,7 @@ void loop() {
     oms::MeshService::instance().tick();
 
     // BLE companion tick
-    oms::BLECompanion::instance().tick();
+    oms::theBLECompanion().tick();
 
     // Deferred config save
     oms::config::tick();
@@ -266,7 +266,7 @@ void setup() {
     oms::MeshService::instance().init();
 
     // 6) Initialise BLE companion service
-    oms::BLECompanion::instance().init();
+    oms::theBLECompanion().init();
 
     // 7) Start watchdog (30s timeout)
     oms::Watchdog::init(30);
@@ -288,7 +288,7 @@ void loop() {
     oms::MeshService::instance().tick();
 
     // BLE companion tick
-    oms::BLECompanion::instance().tick();
+    oms::theBLECompanion().tick();
 
     // Deferred config save
     oms::config::tick();

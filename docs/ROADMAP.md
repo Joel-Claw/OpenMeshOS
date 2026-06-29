@@ -118,7 +118,7 @@ Goal: Full settings, terminal, and polish.
 
 Goal: Support other ESP32-S3 LoRa devices.
 
-- [ ] **Abstract Board interface**
+- [x] **Abstract Board interface**
   - [x] Define IBoard interface (IBoard.h) with BoardCaps, LoRaConfig, DisplayConfig
   - [x] Implement BoardTDeck (T-Deck specific impl of IBoard)
   - [x] BoardFactory::create() returns correct IBoard* per build target
@@ -133,6 +133,15 @@ Goal: Support other ESP32-S3 LoRa devices.
   - [x] New `BoardHeltecV3.h/cpp` for Heltec WiFi LoRa 32 V3 (ESP32-S3 + SX1262 + SSD1306 OLED)
   - [x] BoardFactory moved to BoardFactory.cpp with #ifdef platform selection
   - [x] Unit tests for Heltec V3 pin constants, BoardCaps, LoRaConfig, DisplayConfig
+- [x] **Abstract BLE companion interface**
+  - [x] Define IBLECompanion interface (IBLECompanion.h)
+  - [x] Refactor ESP32 BLE to BLECompanionESP32 (implements IBLECompanion)
+  - [x] Create BLECompanionNRF52 for nRF52 (ArduinoBLE / Nordic SoftDevice)
+  - [x] BLECompanionFactory selects correct impl per platform
+  - [x] Update main.cpp and UI screens to use IBLECompanion via theBLECompanion()
+  - [x] Platform-agnostic buildStatusPayload using platform::freeHeap()
+  - [ ] Test BLE on RAK4631 hardware (nRF52 SoftDevice pairing, message flow)
+  - [ ] Implement BLE OTA firmware update on nRF52 (Nordic DFU bootloader integration)
 - [ ] PlatformIO environments for:
   - [x] `t-deck` (current)
   - [x] `t-deck-plus` (GPS variant)

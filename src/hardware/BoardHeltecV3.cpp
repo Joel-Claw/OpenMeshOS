@@ -63,17 +63,18 @@ void BoardHeltecV3::init()
     pinMode(heltec_v3::BOOT_BTN, INPUT_PULLUP);
 
     // 7) Configure I2C for OLED (SSD1306)
-    // Note: OLED init is handled by the display driver, not here.
-    // We just configure the pins.
-    pinMode(heltec_v3::OLED_RST, OUTPUT);
     // Reset OLED display
+    pinMode(heltec_v3::OLED_RST, OUTPUT);
     digitalWrite(heltec_v3::OLED_RST, LOW);
     delay(10);
     digitalWrite(heltec_v3::OLED_RST, HIGH);
     delay(10);
 
+    // 7a) Initialize the SSD1306 display driver
+    _display.begin();
+
     _initialized = true;
-    OMS_LOG("board", "Heltec V3 init complete (no keyboard, no trackball, OLED on I2C)");
+    OMS_LOG("board", "Heltec V3 init complete (OLED SSD1306 on I2C, no keyboard/trackball)");
 }
 
 // ── Tick ─────────────────────────────────────────────────────────────

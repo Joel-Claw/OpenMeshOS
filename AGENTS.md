@@ -17,6 +17,10 @@ src/
   mesh/MeshService.h/cpp — MeshCore bridge
   mesh/NodeTracker.h/cpp — Discovered node tracking (fixed-size array)
   mesh/OpenMesh.h/cpp — MeshCore subclass (callback overrides)
+  mesh/IBLECompanion.h — BLE companion interface (platform-agnostic)
+  mesh/BLECompanion.h/cpp — ESP32 BLE companion impl (ESP32 BLE stack)
+  mesh/BLECompanionNRF52.h/cpp — nRF52 BLE companion impl (ArduinoBLE)
+  mesh/BLECompanionFactory.cpp — Platform selector
   ui/UIScreen.h/cpp    — LVGL display controller
   ui/ScreenHome.h/cpp  — Home/chat screen
   ui/ScreenMap.h/cpp   — Map screen (planned)

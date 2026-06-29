@@ -35,6 +35,7 @@
 #include "IInput.h"
 #include "Trackball.h"
 #include "Keyboard.h"
+#include "DisplaySSD1306.h"
 
 namespace oms {
 
@@ -159,8 +160,8 @@ public:
     void setBrightness(int level) override;
 
     // ── Display driver (IBoard override) ───────────────────────────────
-    // Returns nullptr until DisplaySSD1306 implementation is added.
-    IDisplay* display() override { return nullptr; }
+    // Returns the SSD1306 OLED display driver.
+    IDisplay* display() override { return &_display; }
 
     // ── Input driver (IBoard override) ────────────────────────────────
     // No keyboard/trackball on RAK4631 — input via BLE companion app.
@@ -240,6 +241,13 @@ private:
     // Stub drivers (never initialized, always report not-present)
     Trackball _stubTrackball;
     Keyboard _stubKeyboard;
+
+    // SSD1306 OLED display driver (128x64, I2C, no reset pin on RAK4631)
+    DisplaySSD1306 _display{128, 64,
+        (int8_t)rak4631::I2C1_SDA,
+        (int8_t)rak4631::I2C1_SCL,
+        -1,  // No reset pin on RAK4631 OLED
+        0x3C};
 
     // Battery ADC config
     // RAK4631 uses voltage divider on AIN3 (P0.05)

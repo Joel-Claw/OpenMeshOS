@@ -14,6 +14,7 @@
 // instead, a minimal status line is shown.
 
 #include "BoardRAK4631.h"
+#include "DisplaySSD1306.h"
 #include "utils/Log.h"
 
 #ifdef OMS_PLATFORM_RAK4631
@@ -79,8 +80,13 @@ void BoardRAK4631::init()
     // OLED init is handled by the display driver, not here.
     // RAK4631 OLED has no reset pin.
 
+    // 7a) Initialize the SSD1306 display driver (if OLED is present)
+    // On RAK4631, the OLED is optional. begin() will log a warning
+    // if the display is not found at the I2C address.
+    _display.begin();
+
     _initialized = true;
-    OMS_LOG("board", "RAK4631 init complete (no keyboard, no trackball, OLED on I2C)");
+    OMS_LOG("board", "RAK4631 init complete (OLED SSD1306 on I2C, no keyboard/trackball)");
 }
 
 // ── Tick ─────────────────────────────────────────────────────────────
