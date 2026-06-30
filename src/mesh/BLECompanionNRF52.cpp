@@ -2,10 +2,10 @@
 // Copyright 2026 Joel Claw & contributors — WTFPL v2
 //
 // nRF52 BLE companion app service implementation.
-// Uses ArduinoBLE library (Nordic SoftDevice) for BLE connectivity.
+// Uses Adafruit Bluefruit52Lib (Nordic SoftDevice) for BLE connectivity.
 //
 // NOTE: BLE OTA firmware update is NOT implemented on nRF52 in this version.
-// The nRF52 uses a different OTA mechanism (nRF52 DFU / bootloader-based).
+// The nRF52 uses a different OTA mechanism (Nordic DFU / bootloader-based).
 // OTA via BLE would require integrating with the Nordic bootloader, which
 // is a separate effort. The firmware update characteristic is omitted here.
 
@@ -18,7 +18,7 @@
 
 #if defined(ARDUINO_ARCH_NRF52840)
 
-#include <ArduinoBLE.h>
+#include <bluefruit.h>
 
 namespace oms {
 
@@ -28,82 +28,126 @@ BLECompanionNRF52& BLECompanionNRF52::instance() {
     return s_ble;
 }
 
+// ── Static callback wrappers ──────────────────────────────────────
+void BLECompanionNRF52::onConnect(uint16_t conn_handle) {
+    auto& ble = instance();
+    ble._connected = true;
+    ble._connHandle = conn_handle;
+
+    // Get peer device name if available
+    BLEConnection* conn = Bluefruit.Connection(conn_handle);
+    char peerName[32] = {0};
+    if (conn) {
+        conn->getPeerName(peerName, sizeof(peerName));
+    }
+    OMS_LOG("BLE", "Companion connected: %s", peerName[0] ? peerName : "(unknown)");
+}
+
+void BLECompanionNRF52::onDisconnect(uint16_t conn_handle, uint8_t reason) {
+    auto& ble = instance();
+    ble._connected = false;
+    ble._connHandle = BLE_CONN_HANDLE_INVALID;
+    (void)conn_handle;
+    OMS_LOG("BLE", "Companion disconnected (reason=0x%02X)", reason);
+}
+
+void BLECompanionNRF52::onConfigWrite(uint16_t conn_handle, BLECharacteristic* chr, uint8_t* data, uint16_t len) {
+    (void)conn_handle;
+    (void)chr;
+    instance().handleConfigWrite(data, len);
+}
+
+void BLECompanionNRF52::onMessageWrite(uint16_t conn_handle, BLECharacteristic* chr, uint8_t* data, uint16_t len) {
+    (void)conn_handle;
+    (void)chr;
+    instance().handleMessageWrite(data, len);
+}
+
 // ── init ───────────────────────────────────────────────────────────
 void BLECompanionNRF52::init() {
-    OMS_LOG("BLE", "Initialising BLE companion service (nRF52)");
+    OMS_LOG("BLE", "Initialising BLE companion service (nRF52 Bluefruit52Lib)");
 
-    if (!BLE.begin()) {
-        OMS_LOG("BLE", "ERROR: BLE.begin() failed — SoftDevice not available?");
-        return;
-    }
+    // Initialise the Bluefruit module (Nordic SoftDevice)
+    Bluefruit.begin();
     _begun = true;
+
+    // Set the connect/disconnect callback handlers
+    Bluefruit.Periph.setConnectCallback(onConnect);
+    Bluefruit.Periph.setDisconnectCallback(onDisconnect);
 
     // Build device name from callsign
     snprintf(_deviceName, sizeof(_deviceName), "%s%s",
              BLE_DEVICE_PREFIX, config::get().callsign);
 
-    BLE.setLocalName(_deviceName);
-    BLE.setDeviceName(_deviceName);
+    Bluefruit.configUuid128Len(16);  // Ensure 128-bit UUID support
+    Bluefruit.setName(_deviceName);
 
-    // Require bonding/encryption (nRF52 SoftDevice pairing)
-    // BLE.setAuthorization(true);  // uncomment when companion app supports pairing
-
-    // Advertise our custom service
-    BLE.setAdvertisedServiceUuid(UUID_SERVICE);
-
-    // Create the companion service
-    _service = new BLEService(UUID_SERVICE);
-    if (!_service) {
-        OMS_LOG("BLE", "ERROR: BLEService alloc failed");
-        return;
-    }
+    // Configure and start the companion service
+    // Order matters: service.begin() must be called before characteristic.begin()
+    _service.setUuid(UUID_SERVICE);
+    _service.begin();
 
     // ── Config Read characteristic ─────────────────────────────────
-    _cfgReadChar = new BLECharacteristic(UUID_CFG_READ, BLERead, 128);
-    if (_cfgReadChar) {
+    _cfgReadChar.setUuid(UUID_CFG_READ);
+    _cfgReadChar.setProperties(CHR_PROPS_READ);
+    _cfgReadChar.setPermission(SECMODE_OPEN, SECMODE_NO_ACCESS);
+    _cfgReadChar.setMaxLen(128);
+    _cfgReadChar.begin();
+    {
         char cfgBuf[128];
         snprintf(cfgBuf, sizeof(cfgBuf),
                  "callsign=%s\nregion=%s\nchannel=%d\nbrightness=%d\nsound=%d\n",
                  config::get().callsign, config::get().radioRegion,
                  config::get().channel, config::get().brightness,
                  config::get().notifySound ? 1 : 0);
-        _cfgReadChar->writeValue(cfgBuf, strlen(cfgBuf));
-        _service->addCharacteristic(_cfgReadChar);
+        _cfgReadChar.write(cfgBuf, strlen(cfgBuf));
     }
 
     // ── Config Write characteristic ────────────────────────────────
-    _cfgWriteChar = new BLECharacteristic(UUID_CFG_WRITE, BLEWrite, 128);
-    if (_cfgWriteChar) {
-        _service->addCharacteristic(_cfgWriteChar);
-    }
+    _cfgWriteChar.setUuid(UUID_CFG_WRITE);
+    _cfgWriteChar.setProperties(CHR_PROPS_WRITE);
+    _cfgWriteChar.setPermission(SECMODE_OPEN, SECMODE_OPEN);
+    _cfgWriteChar.setMaxLen(128);
+    _cfgWriteChar.setWriteCallback(onConfigWrite, false);
+    _cfgWriteChar.begin();
 
-    // ── Messages Inbound (mesh -> phone) ───────────────────────────
-    _msgInChar = new BLECharacteristic(UUID_MSG_IN, BLENotify, 251);
-    if (_msgInChar) {
-        _service->addCharacteristic(_msgInChar);
-    }
+    // ── Messages Inbound (mesh -> phone, notify) ───────────────────
+    _msgInChar.setUuid(UUID_MSG_IN);
+    _msgInChar.setProperties(CHR_PROPS_NOTIFY);
+    _msgInChar.setPermission(SECMODE_OPEN, SECMODE_NO_ACCESS);
+    _msgInChar.setMaxLen(251);
+    _msgInChar.begin();
 
-    // ── Messages Outbound (phone -> mesh) ──────────────────────────
-    _msgOutChar = new BLECharacteristic(UUID_MSG_OUT, BLEWrite, 251);
-    if (_msgOutChar) {
-        _service->addCharacteristic(_msgOutChar);
-    }
+    // ── Messages Outbound (phone -> mesh, write) ──────────────────
+    _msgOutChar.setUuid(UUID_MSG_OUT);
+    _msgOutChar.setProperties(CHR_PROPS_WRITE);
+    _msgOutChar.setPermission(SECMODE_OPEN, SECMODE_OPEN);
+    _msgOutChar.setMaxLen(251);
+    _msgOutChar.setWriteCallback(onMessageWrite, false);
+    _msgOutChar.begin();
 
     // ── Device Status characteristic ──────────────────────────────
-    _statusChar = new BLECharacteristic(UUID_STATUS, BLERead | BLENotify, 64);
-    if (_statusChar) {
+    _statusChar.setUuid(UUID_STATUS);
+    _statusChar.setProperties(CHR_PROPS_READ | CHR_PROPS_NOTIFY);
+    _statusChar.setPermission(SECMODE_OPEN, SECMODE_NO_ACCESS);
+    _statusChar.setMaxLen(64);
+    _statusChar.begin();
+    {
         uint8_t statusBuf[64];
         size_t statusLen = 0;
         buildStatusPayload(statusBuf, statusLen);
-        _statusChar->writeValue(statusBuf, statusLen);
-        _service->addCharacteristic(_statusChar);
+        _statusChar.write(statusBuf, statusLen);
     }
 
-    // Add the service
-    BLE.addService(*_service);
-
-    // Start advertising
-    BLE.advertise();
+    // Setup advertising
+    Bluefruit.Advertising.addFlags(BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE);
+    Bluefruit.Advertising.addTxPower();
+    Bluefruit.Advertising.addService(_service);
+    Bluefruit.Advertising.addName();
+    Bluefruit.Advertising.restartOnDisconnect(true);
+    Bluefruit.Advertising.setInterval(32, 244);    // fast=20ms, slow=152.5ms
+    Bluefruit.Advertising.setFastTimeout(30);      // 30s in fast mode
+    Bluefruit.Advertising.start(0);                // 0 = advertise forever
 
     OMS_LOG("BLE", "Companion service started, advertising as '%s'", _deviceName);
 }
@@ -112,32 +156,10 @@ void BLECompanionNRF52::init() {
 void BLECompanionNRF52::tick() {
     if (!_enabled || !_begun) return;
 
-    // Poll BLE events (ArduinoBLE requires polling)
-    BLE.poll();
+    // Bluefruit52Lib is event-driven (callbacks), so we don't need to poll
+    // for writes like ArduinoBLE. We only do periodic status updates here.
 
-    // Check connection state
-    BLEDevice central = BLE.central();
-    bool wasConnected = _connected;
-    _connected = central && central.connected();
-
-    if (_connected && !wasConnected) {
-        OMS_LOG("BLE", "Companion connected: %s", central.address().c_str());
-    } else if (!_connected && wasConnected) {
-        OMS_LOG("BLE", "Companion disconnected");
-    }
-
-    // Handle config writes
-    if (_connected && _cfgWriteChar && _cfgWriteChar->written()) {
-        handleConfigWrite(*_cfgWriteChar);
-    }
-
-    // Handle message writes
-    if (_connected && _msgOutChar && _msgOutChar->written()) {
-        handleMessageWrite(*_msgOutChar);
-    }
-
-    // Periodic status update
-    if (_connected && _statusChar) {
+    if (_connected) {
         uint32_t now = millis();
         if (now - _lastStatusMs >= STATUS_UPDATE_MS) {
             notifyStatus();
@@ -148,7 +170,10 @@ void BLECompanionNRF52::tick() {
 
 // ── notifyMessage ──────────────────────────────────────────────────
 void BLECompanionNRF52::notifyMessage(const InboxMessage& msg) {
-    if (!_connected || !_msgInChar) return;
+    if (!_connected || _connHandle == BLE_CONN_HANDLE_INVALID) return;
+
+    // Check if notifications are enabled for this characteristic
+    if (!_msgInChar.notifyEnabled(_connHandle)) return;
 
     // Format: [1 byte kind] [1 byte channel] [8 bytes sender] [N bytes text]
     uint8_t buf[MSG_MAX_LEN + 12];
@@ -164,17 +189,19 @@ void BLECompanionNRF52::notifyMessage(const InboxMessage& msg) {
     memcpy(buf + len, msg.text, textLen);
     len += textLen;
 
-    _msgInChar->setValue(buf, len);
+    _msgInChar.notify(_connHandle, buf, len);
     OMS_LOG("BLE", "Notified message from %s (%u bytes)", msg.sender, (unsigned)len);
 }
 
 // ── notifyStatus ──────────────────────────────────────────────────
 void BLECompanionNRF52::notifyStatus() {
-    if (!_statusChar) return;
+    if (!_connected || _connHandle == BLE_CONN_HANDLE_INVALID) return;
+    if (!_statusChar.notifyEnabled(_connHandle)) return;
+
     uint8_t buf[64];
     size_t len = 0;
     buildStatusPayload(buf, len);
-    _statusChar->setValue(buf, len);
+    _statusChar.notify(_connHandle, buf, len);
 }
 
 // ── buildStatusPayload ────────────────────────────────────────────
@@ -235,7 +262,7 @@ void BLECompanionNRF52::buildStatusPayload(uint8_t* buf, size_t& len) {
 }
 
 // ── handleConfigWrite ─────────────────────────────────────────────
-void BLECompanionNRF52::handleConfigWrite(BLECharacteristic& charRef) {
+void BLECompanionNRF52::handleConfigWrite(const uint8_t* data, uint16_t len) {
     uint32_t now = millis();
     if (now - _lastCfgWriteMs < CFG_WRITE_MIN_INTERVAL_MS) {
         OMS_LOG("BLE", "Config write rate-limited");
@@ -243,16 +270,11 @@ void BLECompanionNRF52::handleConfigWrite(BLECharacteristic& charRef) {
     }
     _lastCfgWriteMs = now;
 
-    // Read the written value
-    int valueLen = charRef.valueLength();
-    if (valueLen <= 0) return;
-
-    const uint8_t* data = charRef.value();
-    if (!data || valueLen == 0) return;
+    if (len == 0 || !data) return;
 
     // Copy to a null-terminated buffer for parsing
     char buf[129];
-    size_t copyLen = (size_t)valueLen < sizeof(buf) - 1 ? (size_t)valueLen : sizeof(buf) - 1;
+    size_t copyLen = (size_t)len < sizeof(buf) - 1 ? (size_t)len : sizeof(buf) - 1;
     memcpy(buf, data, copyLen);
     buf[copyLen] = '\0';
 
@@ -306,27 +328,21 @@ void BLECompanionNRF52::handleConfigWrite(BLECharacteristic& charRef) {
     config::save();
 
     // Update config read characteristic
-    if (_cfgReadChar) {
-        char cfgBuf[128];
-        snprintf(cfgBuf, sizeof(cfgBuf),
-                 "callsign=%s\nregion=%s\nchannel=%d\nbrightness=%d\nsound=%d\n",
-                 config::get().callsign, config::get().radioRegion,
-                 config::get().channel, config::get().brightness,
-                 config::get().notifySound ? 1 : 0);
-        _cfgReadChar->writeValue(cfgBuf, strlen(cfgBuf));
-    }
+    char cfgBuf[128];
+    snprintf(cfgBuf, sizeof(cfgBuf),
+             "callsign=%s\nregion=%s\nchannel=%d\nbrightness=%d\nsound=%d\n",
+             config::get().callsign, config::get().radioRegion,
+             config::get().channel, config::get().brightness,
+             config::get().notifySound ? 1 : 0);
+    _cfgReadChar.write(cfgBuf, strlen(cfgBuf));
 }
 
 // ── handleMessageWrite ────────────────────────────────────────────
-void BLECompanionNRF52::handleMessageWrite(BLECharacteristic& charRef) {
-    int valueLen = charRef.valueLength();
-    if (valueLen < 2) return;
-
-    const uint8_t* data = charRef.value();
-    if (!data) return;
+void BLECompanionNRF52::handleMessageWrite(const uint8_t* data, uint16_t len) {
+    if (len < 2 || !data) return;
 
     uint8_t channelId = data[0];
-    size_t textLen = (size_t)valueLen - 1;
+    size_t textLen = (size_t)len - 1;
 
     char textBuf[MSG_MAX_LEN + 1];
     if (textLen > MSG_MAX_LEN) textLen = MSG_MAX_LEN;
@@ -348,10 +364,10 @@ void BLECompanionNRF52::setEnabled(bool enabled) {
     if (!_begun) return;
 
     if (!enabled) {
-        BLE.stopAdvertise();
+        Bluefruit.Advertising.stop();
         OMS_LOG("BLE", "Advertising stopped (disabled)");
     } else if (!_connected) {
-        BLE.advertise();
+        Bluefruit.Advertising.start(0);
         OMS_LOG("BLE", "Advertising restarted");
     }
 }

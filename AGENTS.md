@@ -19,7 +19,7 @@ src/
   mesh/OpenMesh.h/cpp — MeshCore subclass (callback overrides)
   mesh/IBLECompanion.h — BLE companion interface (platform-agnostic)
   mesh/BLECompanion.h/cpp — ESP32 BLE companion impl (ESP32 BLE stack)
-  mesh/BLECompanionNRF52.h/cpp — nRF52 BLE companion impl (ArduinoBLE)
+  mesh/BLECompanionNRF52.h/cpp — nRF52 BLE companion impl (Adafruit Bluefruit52Lib)
   mesh/BLECompanionFactory.cpp — Platform selector
   ui/UIScreen.h/cpp    — LVGL display controller
   ui/ScreenHome.h/cpp  — Home/chat screen
