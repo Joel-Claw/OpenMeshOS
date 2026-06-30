@@ -218,6 +218,19 @@ Cache up to 8 tiles in PSRAM to reduce SD reads
 - Any key / trackball press returns to Home
 - Auto-dimming: backlight drops to 30% before full sleep
 
+## Implementation Classes
+
+| Screen | Class | File | Description |
+|--------|-------|------|-------------|
+| Home (Chat) | `ScreenHome` | `src/ui/ScreenHome.cpp/h` | Channel tabs, message bubbles, input bar |
+| Map | `ScreenMap` | `src/ui/ScreenMap.cpp/h` | Tile rendering, node markers, pan/zoom |
+| Settings | `ScreenSettings` | `src/ui/ScreenSettings.cpp/h` | Radio, device, network, about config |
+| Terminal | `ScreenTerminal` | `src/ui/ScreenTerminal.cpp/h` | MeshCore CLI passthrough, command history |
+| Lock/Sleep | `ScreenLock` | `src/ui/ScreenLock.cpp/h` | Clock, battery/signal display, auto-dimming |
+| Scanner | `ScreenScanner` | `src/ui/ScreenScanner.cpp/h` | Discovered node list with RSSI/distance |
+| Base | `UIScreen` | `src/ui/UIScreen.cpp/h` | LVGL display controller base class |
+| Theme | `Theme` | `src/ui/Theme.cpp/h` | Colour palette and font definitions |
+
 ## Navigation Model
 
 ### Trackball
