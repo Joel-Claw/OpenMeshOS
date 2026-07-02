@@ -10,8 +10,8 @@ namespace oms {
 
 // Forward declarations
 class IBoard;
-class TDeckBoard;
-class TDeckClock;
+class MeshBoard;
+class MeshClock;
 class OpenMeshChat;
 
 /// MeshService is the central bridge between MeshCore's protocol stack
@@ -39,16 +39,16 @@ public:
     bool initialized() const { return _initialized; }
 
     // Access to MeshCore board/clock for other subsystems
-    TDeckBoard& board() { return *_meshBoard; }
-    TDeckClock& clock() { return *_clock; }
+    MeshBoard& board() { return *_meshBoard; }
+    MeshClock& clock() { return *_clock; }
 
     // Access to the chat layer (for contact list, adverts, etc.)
     OpenMeshChat* chat() { return _chat; }
 
 private:
     bool _initialized = false;
-    TDeckBoard* _meshBoard = nullptr;
-    TDeckClock* _clock = nullptr;
+    MeshBoard* _meshBoard = nullptr;
+    MeshClock* _clock = nullptr;
     OpenMeshChat* _chat = nullptr;
 
     // Periodic advert timer (lets other nodes discover us)

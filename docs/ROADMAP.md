@@ -32,11 +32,11 @@ Current firmware version: **0.1.0-alpha.2** (first compile, not flashed to hardw
 
 Goal: Send and receive messages on the mesh.
 
-- [x] MeshCore MainBoard implementation for T-Deck
-  - Battery voltage read (ADC on GPIO)
-  - MCU temperature
-  - Reboot/powerOff
-- [x] MeshCore RTCClock implementation
+- [x] MeshCore MainBoard implementation (MeshBoard, platform-agnostic via IBoard)
+  - Battery voltage read (delegates to IBoard)
+  - MCU temperature (delegates to IBoard)
+  - Reboot/powerOff (delegates to IBoard)
+- [x] MeshCore RTCClock implementation (MeshClock, platform-agnostic)
   - Sync from GPS (T-Deck Plus)
   - Sync from BLE companion app
   - Manual set via settings

@@ -15,8 +15,8 @@
 //   - Cleaner separation: chat logic in OpenMeshChat, UI in screens
 
 #include "MeshService.h"
-#include "TDeckBoard.h"
-#include "TDeckClock.h"
+#include "MeshBoard.h"
+#include "MeshClock.h"
 #include "NodeTracker.h"
 #include "../hardware/IBoard.h"
 #include "../utils/Config.h"
@@ -73,8 +73,8 @@ MeshService& MeshService::instance() {
 }
 
 // ── MeshCore components ─────────────────────────────────────────────
-static TDeckBoard*      s_meshBoard  = nullptr;
-static TDeckClock*       s_clock     = nullptr;
+static MeshBoard*       s_meshBoard  = nullptr;
+static MeshClock*        s_clock     = nullptr;
 static SimpleMeshTables*  s_tables   = nullptr;
 static StaticPoolPacketManager* s_pktMgr = nullptr;
 static OpenMeshChat*      s_chat     = nullptr;
@@ -143,12 +143,13 @@ void MeshService::init() {
     // ── Board and clock ───────────────────────────────────────────
     // IBoard is created by BoardFactory::create() via theBoard(),
     // which selects the correct implementation based on build flags.
-    // MeshCore's MainBoard is a separate interface (TDeckBoard) that
-    // provides battery/temp/reboot to the mesh protocol stack.
+    // MeshCore's MainBoard (MeshBoard) provides battery/temp/reboot to
+    // the mesh protocol stack. MeshBoard delegates to IBoard for hardware
+    // specifics, so the same class works on all platforms.
     IBoard* hwBoard = theBoard();
 
-    _meshBoard = new TDeckBoard();
-    _clock = new TDeckClock();
+    _meshBoard = new MeshBoard();
+    _clock = new MeshClock();
 
     OMS_LOG("Mesh", "Board: %s", _meshBoard->getManufacturerName());
     OMS_LOG("Mesh", "ADC multiplier: %.2f", _meshBoard->getAdcMultiplier());

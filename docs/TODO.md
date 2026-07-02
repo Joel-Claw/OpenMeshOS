@@ -44,9 +44,9 @@
 
 ## MeshCore Integration
 
-- [x] Create `TDeckBoard` class implementing `mesh::MainBoard`
-  - [x] `getBattMilliVolts()` — ADC on GPIO1
-  - [x] `getMCUTemperature()` — ESP32 internal temp
+- [x] Create `MeshBoard` class implementing `mesh::MainBoard` (replaces old TDeckBoard)
+  - [x] `getBattMilliVolts()` — delegates to IBoard::batteryMilliVolts()
+  - [x] `getMCUTemperature()` — delegates to IBoard::mcuTemperature()
 
 ## OpenMeshChat Integration
 
@@ -62,15 +62,15 @@
 - [x] All host-side tests pass (7/7)
 - [ ] Benefits to verify on hardware: automatic contact discovery, group channels with PSK, DM ACKs
 - [x] Send periodic adverts (sendAdvert) on a timer in the main loop
-  - [x] `reboot()` — ESP.restart()
-  - [x] `getResetReason()` — esp_reset_reason()
-  - [x] `getManufacturerName()` — return "LilyGo"
+  - [x] `reboot()` — delegates to IBoard::reboot()
+  - [x] `getResetReason()` — delegates to IBoard::resetReason()
+  - [x] `getManufacturerName()` — delegates to IBoard::boardName()
   - [x] `getStartupReason()` — check RTC memory
-- [x] Create `TDeckClock` class implementing `mesh::RTCClock`
+- [x] Create `MeshClock` class implementing `mesh::RTCClock` (replaces old TDeckClock)
   - [x] GPS time sync
   - [x] NTP fallback
   - [x] millis() drift tracking
-- [x] Wire TDeckBoard + TDeckClock into MeshService
+- [x] Wire MeshBoard + MeshClock into MeshService
 - [x] Load identity from SPIFFS (generate on first boot)
 - [x] Configure radio region (EU868 / US915 etc) from Config
 - [x] Start MeshCore loop in MeshService::tick()

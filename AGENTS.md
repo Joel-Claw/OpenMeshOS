@@ -15,6 +15,8 @@ src/
   hardware/Board.h/cpp — T-Deck hardware abstraction
   hardware/Keyboard.h/cpp — BBQ10KB I2C keyboard (planned)
   mesh/MeshService.h/cpp — MeshCore bridge
+  mesh/MeshBoard.h/cpp — Platform-agnostic MainBoard impl (delegates to IBoard)
+  mesh/MeshClock.h/cpp — Platform-agnostic RTCClock impl (GPS/NTP/BLE sync)
   mesh/NodeTracker.h/cpp — Discovered node tracking (fixed-size array)
   mesh/OpenMesh.h/cpp — MeshCore subclass (callback overrides)
   mesh/IBLECompanion.h — BLE companion interface (platform-agnostic)

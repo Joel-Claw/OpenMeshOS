@@ -1,8 +1,12 @@
-// OpenMeshOS — TDeckBoard.h
+// OpenMeshOS — MeshBoard.h
 // Copyright 2026 Joel Claw & contributors — WTFPL v2
 //
-// Implements MeshCore's MainBoard interface for the LilyGo T-Deck.
-// Provides battery voltage, MCU temperature, reboot, and GPIO access.
+// MeshCore MainBoard implementation, platform-aware.
+// Replaces the old TDeckBoard with a generic implementation that
+// gets hardware specifics (ADC pin, manufacturer name) from IBoard.
+//
+// This allows the same class to work on T-Deck, Heltec V3, and RAK4631
+// without separate implementations for each platform.
 
 #pragma once
 
@@ -12,24 +16,23 @@
 
 namespace oms {
 
-class TDeckBoard : public mesh::MainBoard {
+class MeshBoard : public mesh::MainBoard {
 public:
-    TDeckBoard();
+    MeshBoard();
 
     // ── MainBoard interface ────────────────────────────────────────
     uint16_t getBattMilliVolts() override;
     float getMCUTemperature() override;
-    const char* getManufacturerName() const override { return "LilyGo T-Deck"; }
+    const char* getManufacturerName() const override;
     void reboot() override;
     uint8_t getStartupReason() const override;
     uint32_t getResetReason() const override;
 
     // ── ADC multiplier ────────────────────────────────────────────
-    // T-Deck voltage divider: battery → ADC
     bool setAdcMultiplier(float multiplier) override;
     float getAdcMultiplier() const override { return _adcMult; }
 
-    // ── GPIO (keyboard trackball, etc.) ───────────────────────────
+    // ── GPIO ──────────────────────────────────────────────────────
     uint32_t getGpio() override;
     void setGpio(uint32_t values) override;
 
