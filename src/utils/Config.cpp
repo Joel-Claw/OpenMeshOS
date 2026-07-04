@@ -15,6 +15,15 @@
 #include <cstring>
 #include <cstdlib>
 
+// Crypto library includes MUST be at file scope (outside namespace oms).
+// The rweather/Crypto library defines classes (AES128, SHA256, AESCommon) in
+// the global namespace and uses #define macros (AES128 -> AES128_ESP on ESP32)
+// to rename classes. If included inside a namespace, the class definitions
+// end up in that namespace, causing linker errors (undefined vtable, etc).
+#include <Crypto.h>
+#include <AES.h>
+#include <SHA256.h>
+
 namespace oms {
 
 static const char* CONFIG_PATH     = "/oms.cfg";
@@ -33,10 +42,6 @@ static const char* CONFIG_RAW_PATH = "/oms.cfg.raw";  // plaintext backup during
 // Migration: old XOR-obfuscated and plaintext configs are auto-detected
 // and re-saved in the new AES format on first load.
 
-#include <Crypto.h>
-#include <AES.h>
-#include <SHA256.h>
-
 static constexpr size_t AES_KEY_LEN = 16;   // AES-128
 static constexpr size_t AES_IV_LEN  = 16;   // CTR nonce/counter
 static constexpr size_t MAGIC_LEN   = 4;    // "OMS2" header
@@ -51,7 +56,7 @@ static void deriveAesKey()
     uint8_t mac[6];
     platform::readMacAddress(mac);
 
-    SHA256 sha256;
+    ::SHA256 sha256;
     sha256.reset();
     sha256.update(mac, 6);
     sha256.update((const uint8_t*)"oms-cfg-key", 11);
@@ -76,7 +81,7 @@ static void aesCtrCrypt(const uint8_t* input, size_t len,
                          const uint8_t* key, const uint8_t* iv,
                          uint8_t* output)
 {
-    AES128 aes;
+    ::AES128 aes;
     aes.setKey(key, AES_KEY_LEN);
 
     // CTR mode: encrypt IV counter blocks, XOR with input
