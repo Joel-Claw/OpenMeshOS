@@ -594,12 +594,17 @@ static void ota_start_sd_cb(lv_event_t* e) {
     if (SD.exists(checksumPath)) {
         File chkFile = SD.open(checksumPath, FILE_READ);
         if (chkFile) {
-            String expectedHex = chkFile.readString();
+            char expectedHex[65] = {0};
+            size_t hexLen = chkFile.readBytes(expectedHex, 64);
             chkFile.close();
-            // Trim whitespace/newlines
-            expectedHex.trim();
+            expectedHex[hexLen] = '\0';
+            // Trim trailing whitespace/newlines
+            while (hexLen > 0 && (expectedHex[hexLen-1] == '\n' || expectedHex[hexLen-1] == '\r' ||
+                                  expectedHex[hexLen-1] == ' ' || expectedHex[hexLen-1] == '\t')) {
+                expectedHex[--hexLen] = '\0';
+            }
 
-            if (expectedHex.length() == 64) {
+            if (hexLen == 64) {
                 // Compute SHA-256 of firmware.bin
                 mbedtls_md_context_t ctx;
                 mbedtls_md_init(&ctx);
@@ -626,13 +631,14 @@ static void ota_start_sd_cb(lv_event_t* e) {
                     }
                     actualHex[64] = '\0';
 
-                    if (expectedHex.equalsIgnoreCase(actualHex)) {
+                    // Case-insensitive compare (strncasecmp)
+                    if (strncasecmp(expectedHex, actualHex, 64) == 0) {
                         if (s_otaStatusLabel)
                             lv_label_set_text(s_otaStatusLabel, "Checksum OK!");
                     } else {
                         if (s_otaStatusLabel)
                             lv_label_set_text(s_otaStatusLabel, "CHECKSUM MISMATCH!");
-                        OMS_LOG("OTA", "SHA-256 mismatch: expected=%s got=%s", expectedHex.c_str(), actualHex);
+                        OMS_LOG("OTA", "SHA-256 mismatch: expected=%s got=%s", expectedHex, actualHex);
                         s_otaInProgress = false;
                         return;
                     }
