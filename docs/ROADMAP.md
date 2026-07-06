@@ -1,6 +1,6 @@
 # Roadmap — OpenMeshOS
 
-Current firmware version: **0.1.0-alpha.2** (first compile, not flashed to hardware)
+Current firmware version: **0.1.0-alpha.3** (AES config encryption, BLE OTA timeout, all builds green)
 
 ## Phase 0: Foundation Cleanup (v0.1.0 — Current)
 
@@ -163,6 +163,8 @@ Goal: Production-ready firmware.
 - [x] Watchdog timer (auto-reboot on hang after 30s)
 - [x] Crash logging (save stack trace to SPIFFS, show on next boot)
 - [x] Security audit (MeshCore encryption, no plaintext key storage) — see docs/SECURITY_AUDIT.md
+- [x] BLE OTA abort timeout (30s auto-abort on stalled OTA transfer) — July 6, 2026
+- [x] Memory audit (static analysis, all allocations safe) — see docs/MEMORY_AUDIT.md — July 6, 2026
 - [x] User documentation (flashing guide, settings reference, FAQ) — docs/USER_GUIDE.md
 - [x] Release binaries on GitHub with SHA-256 checksums
 - [x] Web flasher page (like MeshCore's) — instructions in release notes
