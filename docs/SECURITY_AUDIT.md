@@ -87,6 +87,8 @@
 3. Add **rate limiting** on BLE config writes (prevent rapid wear attacks)
 4. Consider **encrypted config** storage (encrypt sensitive fields before writing to SPIFFS)
 5. Add **BLE OTA abort timeout** — if no data for N seconds, auto-abort in-progress OTA
+   - **Status**: ✅ Implemented (July 6, 2026)
+   - **Details**: 30-second timeout in `BLECompanionESP32::tick()`. If no OTA data packet for 30s, auto-aborts with `Update.abort()`, resets OTA state, and notifies companion app with step=0xFF.
 
 ---
 

@@ -167,8 +167,19 @@ void BLECompanionESP32::init() {
 // ── tick ───────────────────────────────────────────────────────────
 void BLECompanionESP32::tick() {
     if (!_enabled) return;
+    uint32_t now = millis();
+
+    // BLE OTA abort timeout: auto-abort if no data for OTA_TIMEOUT_MS
+    if (_otaInProgress && (now - _otaLastDataMs >= OTA_TIMEOUT_MS)) {
+        OMS_LOG("BLE", "OTA timed out (no data for %lums), aborting", (unsigned long)OTA_TIMEOUT_MS);
+        Update.abort();
+        _otaInProgress = false;
+        _otaStep = 0;
+        _otaWritten = 0;
+        notifyOtaProgress(0xFF, 0, _otaTotalSize);
+    }
+
     if (_connected && _statusChar) {
-        uint32_t now = millis();
         if (now - _lastStatusMs >= STATUS_UPDATE_MS) {
             notifyStatus();
             _lastStatusMs = now;
@@ -426,6 +437,7 @@ void BLECompanionESP32::handleFirmwareWrite(BLECharacteristic* pChar) {
         _otaInProgress = true;
         _otaWritten = 0;
         _otaStep = 1;
+        _otaLastDataMs = millis();
         notifyOtaProgress(_otaStep, 0, _otaTotalSize);
         return;
     }
@@ -434,6 +446,7 @@ void BLECompanionESP32::handleFirmwareWrite(BLECharacteristic* pChar) {
         size_t written = Update.write(const_cast<uint8_t*>(data), len);
         _otaWritten += written;
         _otaStep = 2;
+        _otaLastDataMs = millis();
         notifyOtaProgress(_otaStep, _otaWritten, _otaTotalSize);
         if (written != len) {
             OMS_LOG("BLE", "OTA write error: wrote %u of %u", (unsigned)written, (unsigned)len);

@@ -70,6 +70,10 @@ private:
     size_t  _otaWritten = 0;
     size_t  _otaTotalSize = 0;
     uint8_t _otaStep = 0;
+    uint32_t _otaLastDataMs = 0;  // Last OTA data packet timestamp
+
+    // OTA abort timeout: if no data for this duration, auto-abort
+    static constexpr uint32_t OTA_TIMEOUT_MS = 30000;  // 30 seconds
 
     // Constants
     static constexpr const char* BLE_DEVICE_PREFIX = "OpenMesh-";

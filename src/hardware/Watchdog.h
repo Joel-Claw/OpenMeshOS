@@ -56,9 +56,10 @@ public:
         OMS_LOG("Watchdog", "Starting nRF52 WDT, timeout=%lus", (unsigned long)timeoutSec);
         // Calculate CRV: timeout in seconds * LFCLK frequency (32768 Hz)
         uint32_t crv = timeoutSec * 32768UL;
-        NRF_WDT->CONFIG = (WDT_CONFIG_HALT_Msk << WDT_CONFIG_HALT_Pos);  // pause when CPU halted
+        // HALT=0 (Pause): pause WDT when CPU is halted by debugger
+        NRF_WDT->CONFIG = 0;  // all fields zero = pause on halt, run otherwise
         NRF_WDT->CRV = crv;
-        NRF_WDT->RREN = (WDT_RREN RR0_Msk << WDT_RREN_RR0_Pos);  // enable reload register 0
+        NRF_WDT->RREN = WDT_RREN_RR0_Msk;  // enable reload register 0
         NRF_WDT->TASKS_START = 1;
         _active = true;
     }
@@ -71,10 +72,11 @@ public:
 
     static void deinit() {
         // nRF52 WDT cannot be stopped once started (hardware safety feature).
-        // The only way to "deinit" is to let it timeout (which resets the system).
-        // We just stop feeding it and let it expire naturally if needed.
-        // Actually, on nRF52, the WDT can be halted via the HALT bit in CONFIG.
-        NRF_WDT->CONFIG |= (WDT_CONFIG_HALT_KeepRunning << WDT_CONFIG_HALT_Pos);
+        // The WDT runs as long as the WDT peripheral is powered, regardless of
+        // the HALT bit. Setting HALT only pauses the WDT when the CPU is halted
+        // (debug halt). There is no way to stop it in software.
+        // We just mark as inactive so feed() stops reloading the counter,
+        // which will cause a reset if the watchdog is not fed by other means.
         _active = false;
     }
 
