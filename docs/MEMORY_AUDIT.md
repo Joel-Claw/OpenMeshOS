@@ -238,3 +238,47 @@ The main areas for improvement are:
 4. **Heap monitoring** — Detect slow leaks before they crash
 
 After these fixes, the firmware should be stable for continuous operation well beyond 72 hours.
+
+---
+
+## Update — 2026-07-06 (alpha.3 review)
+
+Re-audited all allocations against the alpha.3 codebase. Findings:
+
+### Recommendations Status
+
+| # | Recommendation | Status | Notes |
+|---|---|---|---|
+| 1 | Replace `String` in Config parser | ✅ Done | All String usage replaced with `char[]` + `readBytes()` + `strstr()` (commit pre-alpha.3) |
+| 2 | BLE config write rate limiter | ✅ Done | `CFG_WRITE_MIN_INTERVAL_MS = 1000` enforced in both ESP32 and nRF52 BLE |
+| 3 | Stack high-water mark monitoring | ⏳ Pending | Needs hardware testing |
+| 4 | Replace CrashLog String return | ✅ Done | Now uses fixed-size `char[]` buffer |
+| 5 | Heap/PSRAM monitoring | ⏳ Pending | Add periodic logging in MeshService::tick() |
+| 6 | Pre-allocate tone buffer | ⏳ Pending | Low priority — 1-2KB, freed immediately |
+| 7 | 72h soak test | ⏳ Pending | Requires hardware |
+| 8 | Heap watchdog (< 20KB reboot) | ⏳ Pending | Add after soak test validates baseline |
+
+### New Findings (alpha.3)
+
+- **BLE OTA abort timeout**: Added 30s auto-abort for stalled OTA transfers (security audit recommendation #5). Prevents `Update` library from staying open indefinitely. No memory impact.
+- **nRF52 WDT register macros fixed**: Invalid `WDT_CONFIG_HALT_Msk << WDT_CONFIG_HALT_Pos` and `WDT_RREN RR0_Msk` (space) replaced with correct macros. No memory impact.
+- **AES-128-CTR config encryption**: Replaces XOR obfuscation. Crypto context (`mbedtls_md_context_t`) is allocated on stack in `ScreenSettings.cpp` and properly freed with `mbedtls_md_free()`. No heap allocation.
+- **MeshBoard/MeshClock refactor**: Delegates to `IBoard` — no new heap allocations, same singleton pattern.
+- **IBLECompanion abstraction**: No new heap allocations. Factory pattern returns static instance references.
+
+### PSRAM Usage (updated)
+
+| Buffer | Estimated Size | Notes |
+|---|---|---|
+| Display partial buffer | 25.6 KB | `ps_malloc()` ✓ |
+| MsgRingBuffer | ~340 KB | `heap_caps_malloc(MALLOC_CAP_SPIRAM)` ✓ |
+| TileRenderer decode buffer | ~256 KB | `heap_caps_malloc(MALLOC_CAP_SPIRAM)` ✓ (DECODE_BUF_SIZE) |
+| TileRenderer LRU cache (9 tiles) | ~576 KB | 9 × 64KB tiles in PSRAM ✓ |
+| ScreenMap canvas | ~153 KB | `ps_malloc()` ✓ |
+| **Total PSRAM** | **~1.35 MB** | ~17% of 8MB PSRAM |
+
+Previous audit estimated ~666KB; updated with more accurate DECODE_BUF_SIZE and tile cache sizes. Still well within 8MB PSRAM.
+
+### Conclusion
+
+All previously identified issues (#1, #2, #4) have been resolved. The remaining items (#3, #5, #6, #7, #8) require hardware testing or are low-priority enhancements. The firmware is ready for the 24h/48h stress test phase once hardware is available.
