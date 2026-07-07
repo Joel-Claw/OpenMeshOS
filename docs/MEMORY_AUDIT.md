@@ -254,9 +254,9 @@ Re-audited all allocations against the alpha.3 codebase. Findings:
 | 3 | Stack high-water mark monitoring | ⏳ Pending | Needs hardware testing |
 | 4 | Replace CrashLog String return | ✅ Done | Now uses fixed-size `char[]` buffer |
 | 5 | Heap/PSRAM monitoring | ⏳ Pending | Add periodic logging in MeshService::tick() |
-| 6 | Pre-allocate tone buffer | ⏳ Pending | Low priority — 1-2KB, freed immediately |
+| 6 | Pre-allocate tone buffer | ✅ Done | `_toneBuf` pre-allocated in `Notification::init()`, reused in playToneCustom/playPattern (3200 bytes, one-time) |
 | 7 | 72h soak test | ⏳ Pending | Requires hardware |
-| 8 | Heap watchdog (< 20KB reboot) | ⏳ Pending | Add after soak test validates baseline |
+| 8 | Heap watchdog (< 20KB reboot) | ✅ Done | `HeapMonitor::tick()` calls `ESP.restart()` when free heap drops below criticalHeapBytes threshold (500ms delay for log flush) |
 
 ### New Findings (alpha.3)
 

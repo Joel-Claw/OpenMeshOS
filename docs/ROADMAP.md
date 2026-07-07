@@ -165,6 +165,8 @@ Goal: Production-ready firmware.
 - [x] Security audit (MeshCore encryption, no plaintext key storage) — see docs/SECURITY_AUDIT.md
 - [x] BLE OTA abort timeout (30s auto-abort on stalled OTA transfer) — July 6, 2026
 - [x] Memory audit (static analysis, all allocations safe) — see docs/MEMORY_AUDIT.md — July 6, 2026
+- [x] Pre-allocate tone buffer (eliminates per-event heap allocation) — July 7, 2026
+- [x] Heap watchdog (emergency reboot on critical low heap) — July 7, 2026
 - [x] User documentation (flashing guide, settings reference, FAQ) — docs/USER_GUIDE.md
 - [x] Release binaries on GitHub with SHA-256 checksums
 - [x] Web flasher page (like MeshCore's) — instructions in release notes
