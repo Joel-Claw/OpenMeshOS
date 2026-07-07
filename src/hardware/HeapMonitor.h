@@ -20,7 +20,8 @@ public:
     /// Initialise with custom thresholds.
     /// \param logIntervalSec  How often to log diagnostics (default 60s)
     /// \param warnHeapBytes   Log a warning if free heap drops below this
-    /// \param criticalHeapBytes  Log a critical alert if free heap below this
+    /// \param criticalHeapBytes  Force an emergency reboot if free heap
+    ///        drops below this (heap watchdog — prevents undefined behaviour)
     void init(uint32_t logIntervalSec = 60,
               uint32_t warnHeapBytes = 30000,
               uint32_t criticalHeapBytes = 15000);

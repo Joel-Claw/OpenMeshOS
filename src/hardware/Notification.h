@@ -99,12 +99,18 @@ private:
     static constexpr size_t kBufferSize = 1600;     // 200ms at 8kHz (int16 mono)
 #endif
 
+    // Pre-allocated tone buffer (eliminates per-event heap allocation).
+    // Allocated once in init() and reused for all tone/pattern playback.
+    // On non-audio platforms (heltec-v3), this stays null and is never used.
+    int16_t* _toneBuf = nullptr;
+
     bool _i2sRunning = false;
     bool _soundEnabled = true;
     bool _wakeEnabled = true;
     bool _playing = false;
     uint32_t _playStartMs = 0;
     uint16_t _playDurationMs = 0;
+    bool _initialized = false;
 };
 
 }  // namespace oms

@@ -9,6 +9,7 @@
 #include "../hardware/PlatformCompat.h"
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+#include <Esp.h>
 
 namespace oms {
 
@@ -43,9 +44,20 @@ void HeapMonitor::tick() {
 
     // Immediate critical alert (every time, no debounce)
     if (free < _criticalHeapBytes) {
-        OMS_LOG("Heap", "CRITICAL: free heap %u bytes (below %u threshold)",
+        OMS_LOG("Heap", "CRITICAL: free heap %u bytes (below %u threshold) — EMERGENCY REBOOT",
                 (unsigned)free, (unsigned)_criticalHeapBytes);
         logAllStackHWM();
+
+        // Heap watchdog: force reboot to prevent undefined behaviour.
+        // Wait 500ms for log flush, then restart.
+        delay(500);
+        ESP.restart();
+    }
+
+    // Immediate warning (debounced via periodic log interval)
+    if (free < _warnHeapBytes) {
+        OMS_LOG("Heap", "WARNING: free heap %u bytes (below %u threshold)",
+                (unsigned)free, (unsigned)_warnHeapBytes);
     }
 
     // Periodic log at configured interval

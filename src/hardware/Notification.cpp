@@ -38,6 +38,22 @@ void Notification::init() {
     _soundEnabled = config::get().notifySound;
     _wakeEnabled = true;
 
+#ifndef OMS_PLATFORM_HELTEC_V3
+    // Pre-allocate tone buffer once (eliminates per-event heap allocation).
+    // kBufferSize * sizeof(int16_t) = 3200 bytes — small, lives for app lifetime.
+    if (!_toneBuf) {
+        _toneBuf = (int16_t*)heap_caps_malloc(kBufferSize * sizeof(int16_t), MALLOC_CAP_8BIT);
+        if (!_toneBuf) {
+            OMS_LOG("Notif", "WARNING: Failed to pre-allocate tone buffer, will use per-call malloc");
+        } else {
+            OMS_LOG("Notif", "Tone buffer pre-allocated: %u bytes",
+                    (unsigned)(kBufferSize * sizeof(int16_t)));
+        }
+    }
+#endif
+
+    _initialized = true;
+
     OMS_LOG("Notif", "Sound: %s, Wake: %s",
             _soundEnabled ? "on" : "off",
             _wakeEnabled ? "on" : "off");
@@ -152,11 +168,16 @@ void Notification::playToneCustom(uint16_t freqHz, uint16_t durationMs, uint8_t 
     size_t sampleCount = (kSampleRate * durationMs) / 1000;
     if (sampleCount > kBufferSize) sampleCount = kBufferSize;
 
-    // Allocate tone buffer (on stack for short tones, heap for longer)
-    int16_t* buf = (int16_t*)heap_caps_malloc(kBufferSize * sizeof(int16_t), MALLOC_CAP_8BIT);
+    // Use pre-allocated buffer if available, otherwise fall back to malloc
+    int16_t* buf = _toneBuf;
+    bool bufWasAllocated = false;
     if (!buf) {
-        OMS_LOG("Notif", "Failed to allocate tone buffer");
-        return;
+        buf = (int16_t*)heap_caps_malloc(kBufferSize * sizeof(int16_t), MALLOC_CAP_8BIT);
+        bufWasAllocated = true;
+        if (!buf) {
+            OMS_LOG("Notif", "Failed to allocate tone buffer");
+            return;
+        }
     }
 
     // Generate sine wave
@@ -172,7 +193,7 @@ void Notification::playToneCustom(uint16_t freqHz, uint16_t durationMs, uint8_t 
         OMS_LOG("Notif", "I2S write failed: %s", esp_err_to_name(err));
     }
 
-    free(buf);
+    if (bufWasAllocated) free(buf);
 
     // Track that we're playing (for tick() to know when to deinit I2S)
     _playing = true;
@@ -188,10 +209,15 @@ void Notification::playPattern(const uint16_t* freqHz, const uint16_t* durationM
     // Ensure board power is on
     digitalWrite(PIN_POWER_EN, HIGH);
 
-    int16_t* buf = (int16_t*)heap_caps_malloc(kBufferSize * sizeof(int16_t), MALLOC_CAP_8BIT);
+    int16_t* buf = _toneBuf;
+    bool bufWasAllocated = false;
     if (!buf) {
-        OMS_LOG("Notif", "Failed to allocate pattern buffer");
-        return;
+        buf = (int16_t*)heap_caps_malloc(kBufferSize * sizeof(int16_t), MALLOC_CAP_8BIT);
+        bufWasAllocated = true;
+        if (!buf) {
+            OMS_LOG("Notif", "Failed to allocate pattern buffer");
+            return;
+        }
     }
 
     uint32_t totalDuration = 0;
@@ -215,7 +241,7 @@ void Notification::playPattern(const uint16_t* freqHz, const uint16_t* durationM
         }
     }
 
-    free(buf);
+    if (bufWasAllocated) free(buf);
 
     _playing = true;
     _playStartMs = millis();
