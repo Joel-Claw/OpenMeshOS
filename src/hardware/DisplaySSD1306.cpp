@@ -33,7 +33,13 @@ DisplaySSD1306::DisplaySSD1306(uint16_t width, uint16_t height,
 void DisplaySSD1306::begin()
 {
     // Initialize I2C with the board-specific pins
+    // nRF52 TwoWire::begin() does not accept pin arguments
+    // (pins are fixed by the board variant). ESP32 does.
+#ifdef ARDUINO_ARCH_NRF52840
+    Wire.begin();
+#else
     Wire.begin(_sdaPin, _sclPin);
+#endif
 
     // Initialize the SSD1306 display
     // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally

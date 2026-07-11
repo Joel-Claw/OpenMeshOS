@@ -7,9 +7,18 @@
 #include "HeapMonitor.h"
 #include "../utils/Log.h"
 #include "../hardware/PlatformCompat.h"
-#include <freertos/FreeRTOS.h>
-#include <freertos/task.h>
-#include <Esp.h>
+
+#ifdef ARDUINO_ARCH_NRF52840
+  // nRF52: FreeRTOS is built into the Arduino core,
+  // and ESP.restart() is not available — use NVIC_SystemReset()
+  #include <nrf.h>
+  #define ESP_RESTART() NVIC_SystemReset()
+#else
+  #include <freertos/FreeRTOS.h>
+  #include <freertos/task.h>
+  #include <Esp.h>
+  #define ESP_RESTART() ESP.restart()
+#endif
 
 namespace oms {
 
@@ -51,7 +60,7 @@ void HeapMonitor::tick() {
         // Heap watchdog: force reboot to prevent undefined behaviour.
         // Wait 500ms for log flush, then restart.
         delay(500);
-        ESP.restart();
+        ESP_RESTART();
     }
 
     // Immediate warning (debounced via periodic log interval)
@@ -95,6 +104,9 @@ void HeapMonitor::logAllStackHWM() const {
     OMS_LOG("Stack", "loop HWM=%u", (unsigned)uxTaskGetStackHighWaterMark(nullptr));
 
     // Try known task names. If the task doesn't exist, handle is null.
+    // nRF52 FreeRTOS has INCLUDE_xTaskGetHandle=0, so xTaskGetHandle()
+    // is not available. Skip the named-task lookup on nRF52.
+#if !defined(ARDUINO_ARCH_NRF52840)
     static const char* const s_knownTasks[] = {
         "loop1",     // Arduino loop task (second core)
         "lv_timer",  // LVGL timer task
@@ -112,6 +124,7 @@ void HeapMonitor::logAllStackHWM() const {
                      (unsigned)uxTaskGetStackHighWaterMark(h));
         }
     }
+#endif
 }
 
 }  // namespace oms

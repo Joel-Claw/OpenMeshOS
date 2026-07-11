@@ -11,7 +11,11 @@
 #include "../hardware/Notification.h"
 #include "../utils/Config.h"
 #include "../utils/Log.h"
-#include <SPIFFS.h>
+#if defined(ARDUINO_ARCH_NRF52840)
+  #include "../../boards/SPIFFS.h"
+#else
+  #include <SPIFFS.h>
+#endif
 
 namespace oms {
 
@@ -24,13 +28,19 @@ OpenMeshChat::OpenMeshChat(mesh::Radio& radio, mesh::MillisecondClock& ms, mesh:
 }
 
 // ── begin — called once after radio init ───────────────────────────
-void OpenMeshChat::begin(fs::FS& fs) {
+void OpenMeshChat::begin(oms_fs::FS& fs) {
     _fs = &fs;
 
     BaseChatMesh::begin();
 
     // Load or generate identity
+    // IdentityStore expects MeshCore's FILESYSTEM type (Adafruit_LittleFS on nRF52,
+    // fs::FS on ESP32). On nRF52, use the underlying InternalFS via raw().
+#if defined(ARDUINO_ARCH_NRF52840)
+    IdentityStore store(_fs->raw(), "/identity");
+#else
     IdentityStore store(*_fs, "/identity");
+#endif
     store.begin();
 
     const Config& cfg = config::get();

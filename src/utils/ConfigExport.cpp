@@ -11,7 +11,11 @@
 #include "ConfigExport.h"
 #include "Config.h"
 #include "Log.h"
-#include <SPIFFS.h>
+#if defined(ARDUINO_ARCH_NRF52840)
+  #include "../../boards/SPIFFS.h"
+#else
+  #include <SPIFFS.h>
+#endif
 #include <SD.h>
 
 namespace oms {

@@ -61,11 +61,11 @@ public:
         NRF_WDT->CRV = crv;
         NRF_WDT->RREN = WDT_RREN_RR0_Msk;  // enable reload register 0
         NRF_WDT->TASKS_START = 1;
-        _active = true;
+        _activeRef() = true;
     }
 
     static void feed() {
-        if (_active) {
+        if (_activeRef()) {
             NRF_WDT->RR[0] = 0x16E924D3UL;  // magic value to reload WDT
         }
     }
@@ -77,11 +77,15 @@ public:
         // (debug halt). There is no way to stop it in software.
         // We just mark as inactive so feed() stops reloading the counter,
         // which will cause a reset if the watchdog is not fed by other means.
-        _active = false;
+        _activeRef() = false;
     }
 
 private:
-    inline static bool _active = false;
+    static bool& _activeRef()
+    {
+        static bool _active = false;
+        return _active;
+    }
 };
 
 }  // namespace oms

@@ -9,6 +9,14 @@
 
 #include <Arduino.h>
 
+#ifdef ARDUINO_ARCH_NRF52840
+  // nRF52: TaskHandle_t is available via the Arduino core's FreeRTOS integration
+  // No need to include freertos/FreeRTOS.h separately
+#else
+  #include <freertos/FreeRTOS.h>
+  #include <freertos/task.h>
+#endif
+
 namespace oms {
 
 /// Heap and stack diagnostics. Call tick() in loop() to get periodic logs.

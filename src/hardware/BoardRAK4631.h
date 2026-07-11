@@ -56,9 +56,10 @@ namespace rak4631 {
     constexpr uint8_t OLED_SCL   = 14;   // WB_I2C1_SCL
     constexpr uint8_t OLED_RST   = 0xFF; // No reset pin (use -1 / 0xFF)
 
-    // LEDs
-    constexpr uint8_t LED_BLUE   = 35;   // PIN_LED1 (LED_BUILTIN)
-    constexpr uint8_t LED_GREEN  = 36;   // PIN_LED2 (LED_CONN)
+    // LEDs (renamed to avoid clash with nRF52 variant.h macros
+    //  which #define LED_GREEN and LED_BLUE)
+    constexpr uint8_t LED_BLUE_PIN   = 35;   // PIN_LED1 (LED_BUILTIN)
+    constexpr uint8_t LED_GREEN_PIN  = 36;   // PIN_LED2 (LED_CONN)
 
     // User buttons (RAK4631 has no built-in buttons; use WisBlock IO)
     constexpr uint8_t USER_BTN   = 33;   // WB_SW1 (IO_SLOT)

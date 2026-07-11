@@ -79,7 +79,7 @@ void BLECompanionNRF52::init() {
     snprintf(_deviceName, sizeof(_deviceName), "%s%s",
              BLE_DEVICE_PREFIX, config::get().callsign);
 
-    Bluefruit.configUuid128Len(16);  // Ensure 128-bit UUID support
+    Bluefruit.configUuid128Count(16);  // Ensure 128-bit UUID support
     Bluefruit.setName(_deviceName);
 
     // Configure and start the companion service

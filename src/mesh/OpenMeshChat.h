@@ -31,6 +31,15 @@
 #include <helpers/ArduinoHelpers.h>
 #include <helpers/IdentityStore.h>
 
+// Platform-agnostic filesystem types
+#if defined(ARDUINO_ARCH_ESP32)
+  #include <FS.h>
+  namespace oms_fs { using FS = fs::FS; using File = fs::File; }
+#else
+  #include "../../boards/SPIFFS.h"
+  namespace oms_fs { using FS = SPIFFSCompat; using File = ::File; }
+#endif
+
 namespace oms {
 
 // ── LoRa defaults (EU868) — overridden by MeshCore LORA_* defines ────
@@ -66,7 +75,7 @@ public:
                  mesh::RTCClock& rtc, StaticPoolPacketManager& pktMgr,
                  SimpleMeshTables& tables);
 
-    void begin(fs::FS& fs);
+    void begin(oms_fs::FS& fs);
     void loop();
 
     // ── Identity ──────────────────────────────────────────────────
@@ -112,7 +121,7 @@ protected:
     bool allowPacketForward(const mesh::Packet* packet) override { return true; }
 
 private:
-    fs::FS* _fs = nullptr;
+    oms_fs::FS* _fs = nullptr;
     char _callsign[33] = "OMS-0001";
     ChannelDetails* _publicChannel = nullptr;
     uint32_t _expectedAckCrc = 0;

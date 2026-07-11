@@ -9,7 +9,11 @@
 //   RAK4631 builds    — Headless (mesh radio + BLE, nRF52 low-power platform)
 
 #include <Arduino.h>
-#include <SPIFFS.h>
+#if defined(ARDUINO_ARCH_NRF52840)
+  #include "../boards/SPIFFS.h"
+#else
+  #include <SPIFFS.h>
+#endif
 #include "version.h"
 #include "hardware/IBoard.h"
 #include "mesh/MeshService.h"
@@ -22,8 +26,8 @@
 #include "hardware/PowerManager.h"
 #include "hardware/HeapMonitor.h"
 
-// ── T-Deck-only includes (not available on Heltec V3 build) ─────────
-#ifndef OMS_PLATFORM_HELTEC_V3
+// ── T-Deck-only includes (not available on Heltec V3 or RAK4631 build) ───
+#if !defined(OMS_PLATFORM_HELTEC_V3) && !defined(ARDUINO_ARCH_NRF52840)
   #include "hardware/KeyboardInput.h"
   #include "hardware/Notification.h"
   #include "ui/UIScreen.h"
@@ -38,7 +42,7 @@ static oms::KeyboardInput s_kbInput;
 // =============================================================================
 //  T-Deck / T-Deck Plus — Full UI firmware
 // =============================================================================
-#ifndef OMS_PLATFORM_HELTEC_V3
+#if !defined(OMS_PLATFORM_HELTEC_V3) && !defined(ARDUINO_ARCH_NRF52840)
 
 void setup() {
     Serial.begin(115200);
@@ -195,7 +199,7 @@ void setup() {
     oms::CrashLog::installHandler();
 
     // 7) Start watchdog (30s timeout)
-    Watchdog::init(30);
+    oms::Watchdog::init(30);
 
     // 8) Power management (nRF52 WFE idle)
     oms::PowerManager::instance().init();

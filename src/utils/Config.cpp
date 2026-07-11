@@ -10,7 +10,11 @@
 
 #include "Config.h"
 #include "Log.h"
-#include <SPIFFS.h>
+#if defined(ARDUINO_ARCH_NRF52840)
+  #include "../../boards/SPIFFS.h"
+#else
+  #include <SPIFFS.h>
+#endif
 #include "../hardware/PlatformCompat.h"
 #include <cstring>
 #include <cstdlib>

@@ -20,6 +20,14 @@
 #include <Arduino.h>
 #include <Wire.h>
 
+#ifdef ARDUINO_ARCH_NRF52840
+  // nRF52 doesn't have gpio_num_t — use uint32_t for pin numbers
+  // (nRF52 Arduino core uses plain integer pin numbers)
+  #define OMS_GPIO_T uint32_t
+#else
+  #define OMS_GPIO_T gpio_num_t
+#endif
+
 namespace oms {
 
 enum class TrackballType : uint8_t {
@@ -93,11 +101,11 @@ private:
 
     // GPIO pin sets per variant (defined in .cpp)
     struct GPIOPins {
-        gpio_num_t up;
-        gpio_num_t down;
-        gpio_num_t left;
-        gpio_num_t right;
-        gpio_num_t press;
+        OMS_GPIO_T up;
+        OMS_GPIO_T down;
+        OMS_GPIO_T left;
+        OMS_GPIO_T right;
+        OMS_GPIO_T press;
     };
 
     // GPIO trackball (all known hardware revisions)

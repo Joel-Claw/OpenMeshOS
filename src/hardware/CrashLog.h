@@ -83,14 +83,14 @@ public:
 //   - RESETREAS.SREQ: software reset (NVIC_SystemReset)
 //   - RESETREAS.RESETPIN: external reset pin
 //
-// The nRF52 Arduino core maps SPIFFS to LittleFS internally, so we use
-// the same SPIFFS API for file operations.
+// The nRF52 Arduino core does not provide SPIFFS. We use our
+// boards/SPIFFS.h compat shim which maps to Adafruit InternalFS (LittleFS).
 //
 // Unlike ESP32 which has a panic handler hook, nRF52 crashes typically
 // result in a lockup or watchdog reset. We check RESETREAS on boot and
 // log the reason to a file if it indicates a watchdog or lockup reset.
 
-#include <SPIFFS.h>
+#include "../../boards/SPIFFS.h"
 #include <nrf.h>
 #include <cstring>
 

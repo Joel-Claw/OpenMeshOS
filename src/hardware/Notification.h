@@ -18,7 +18,7 @@
 
 #include <Arduino.h>
 
-#ifndef OMS_PLATFORM_HELTEC_V3
+#if !defined(OMS_PLATFORM_HELTEC_V3) && !defined(ARDUINO_ARCH_NRF52840)
   #include <driver/i2s.h>
   #include "BoardTDeck.h"
 #endif
@@ -73,7 +73,7 @@ public:
 private:
     Notification() = default;
 
-#ifndef OMS_PLATFORM_HELTEC_V3
+#if !defined(OMS_PLATFORM_HELTEC_V3) && !defined(ARDUINO_ARCH_NRF52840)
     /// Generate a sine wave buffer at the given frequency and volume.
     /// Returns the number of samples written.
     size_t generateSine(int16_t* buf, size_t sampleCount,

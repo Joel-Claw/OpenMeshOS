@@ -22,7 +22,11 @@
 #include "../utils/Config.h"
 #include "../utils/Log.h"
 
-#include <SPIFFS.h>
+#if defined(ARDUINO_ARCH_NRF52840)
+  #include "../../boards/SPIFFS.h"
+#else
+  #include <SPIFFS.h>
+#endif
 #include "../hardware/PlatformCompat.h"
 
 // LoRa radio config macros — these are now fallback defaults only.
@@ -163,9 +167,15 @@ void MeshService::init() {
             lora.csPin, lora.dio1Pin, lora.rstPin, lora.busyPin,
             lora.sckPin, lora.misoPin, lora.mosiPin);
 
-    // Use HSPI for LoRa (VSPI is used by TFT)
+    // Use HSPI for LoRa on ESP32 (VSPI is used by TFT).
+    // nRF52 has only one SPI bus — use the default SPI.
+#if defined(ARDUINO_ARCH_NRF52840)
+    s_loraSpi = new SPIClass(SPI);
+    s_loraSpi->begin();
+#else
     s_loraSpi = new SPIClass(HSPI);
     s_loraSpi->begin(lora.sckPin, lora.misoPin, lora.mosiPin, lora.csPin);
+#endif
 
     // Create CustomSX1262 with board-provided pin config
     auto* mod = new Module(lora.csPin, lora.dio1Pin, lora.rstPin, lora.busyPin, *s_loraSpi);

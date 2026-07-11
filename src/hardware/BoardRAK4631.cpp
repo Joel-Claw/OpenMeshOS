@@ -51,7 +51,9 @@ void BoardRAK4631::init()
     delay(10);  // Allow power to stabilise
 
     // 2) Configure LoRa SPI pins
-    SPI.begin(rak4631::LORA_SCK, rak4631::LORA_MISO, rak4631::LORA_MOSI, rak4631::LORA_CS);
+    // nRF52 SPI.begin() takes no arguments — pins are configured via variant.h
+    // The RAK4631 variant maps SPI to the LoRA pins automatically.
+    SPI.begin();
 
     // 3) Configure LoRa radio control pins
     pinMode(rak4631::LORA_RST, OUTPUT);
@@ -59,10 +61,10 @@ void BoardRAK4631::init()
     pinMode(rak4631::LORA_DIO1, INPUT);
 
     // 4) Configure LEDs
-    pinMode(rak4631::LED_BLUE, OUTPUT);
-    pinMode(rak4631::LED_GREEN, OUTPUT);
-    digitalWrite(rak4631::LED_BLUE, LOW);   // LED off (active HIGH on nRF52)
-    digitalWrite(rak4631::LED_GREEN, LOW);
+    pinMode(rak4631::LED_BLUE_PIN, OUTPUT);
+    pinMode(rak4631::LED_GREEN_PIN, OUTPUT);
+    digitalWrite(rak4631::LED_BLUE_PIN, LOW);   // LED off (active HIGH on nRF52)
+    digitalWrite(rak4631::LED_GREEN_PIN, LOW);
 
     // 5) Configure battery ADC (nRF52 SAADC)
     // RAK5005-O uses AIN3 (P0.05) for battery voltage via divider
@@ -171,15 +173,15 @@ void BoardRAK4631::powerOff()
     // Disable LoRa power to save energy
     digitalWrite(rak4631::LORA_POWER_EN, LOW);
     // Turn off LEDs
-    digitalWrite(rak4631::LED_BLUE, LOW);
-    digitalWrite(rak4631::LED_GREEN, LOW);
+    digitalWrite(rak4631::LED_BLUE_PIN, LOW);
+    digitalWrite(rak4631::LED_GREEN_PIN, LOW);
     // nRF52 SYSTEMOFF: lowest power state, wake on GPIO or RTC
     // We wake on user button (WB_SW1) if connected
     // Configure GPIO sense on the user button pin
 #ifdef ARDUINO_ARCH_NRF52840
     nrf_gpio_cfg_sense_input(rak4631::USER_BTN,
                               NRF_GPIO_PIN_PULLUP,
-                              NRF_GPIO_PIN_SELOW);
+                              NRF_GPIO_PIN_SENSE_LOW);
 #endif
     // Enter system off
 #ifdef ARDUINO_ARCH_NRF52840
@@ -207,12 +209,12 @@ void BoardRAK4631::setLoRaPower(bool on)
 void BoardRAK4631::setLed(bool on)
 {
     // LED is active HIGH on nRF52 (non-inverted, unlike Heltec V3)
-    digitalWrite(rak4631::LED_BLUE, on ? HIGH : LOW);
+    digitalWrite(rak4631::LED_BLUE_PIN, on ? HIGH : LOW);
 }
 
 void BoardRAK4631::setGreenLed(bool on)
 {
-    digitalWrite(rak4631::LED_GREEN, on ? HIGH : LOW);
+    digitalWrite(rak4631::LED_GREEN_PIN, on ? HIGH : LOW);
 }
 
 void BoardRAK4631::setIOPower(bool on)

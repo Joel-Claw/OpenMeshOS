@@ -64,6 +64,18 @@ uint32_t largestFreeBlock() {
 #include <nrf.h>
 #include <nrf_nvic.h>
 
+// nRF52 heap size from linker symbols.
+// The Adafruit nRF52 core uses FreeRTOS heap_3 (wraps libc malloc/free),
+// which does not implement xPortGetFreeHeapSize(). We query the linker
+// symbols __HeapBase and __HeapLimit, plus the current sbrk pointer,
+// to compute free heap. This is less precise than ESP-IDF's tracking
+// but sufficient for heap monitoring and watchdog purposes.
+extern char __HeapBase;
+extern char __HeapLimit;
+
+// newlib's _sbrk increments the break; we declare it here.
+extern "C" char* _sbrk(int incr);
+
 namespace oms {
 namespace platform {
 
@@ -97,7 +109,7 @@ void fillRandom(uint8_t* buf, size_t len) {
     // We must ensure the RNG is enabled and wait for each value to be ready.
 
     // Enable RNG (if not already enabled)
-    NRF_RNG->CONFIG = (NRF_RNG->CONFIG & ~RNG_CONFIG_DERC_Msk) | RNG_CONFIG_DERC_Enabled;
+    NRF_RNG->CONFIG = (NRF_RNG->CONFIG & ~RNG_CONFIG_DERCEN_Msk) | RNG_CONFIG_DERCEN_Enabled;
     NRF_RNG->TASKS_START = 1;
 
     for (size_t i = 0; i < len; i++) {
@@ -114,15 +126,22 @@ void fillRandom(uint8_t* buf, size_t len) {
 }
 
 uint32_t freeHeap() {
-    // The Arduino nRF52 core maps this to the Nordic heap allocator.
-    // FreeRTOS provides xPortGetFreeHeapSize() which works on nRF52.
-    return xPortGetFreeHeapSize();
+    // nRF52 FreeRTOS uses heap_3 (wraps libc malloc/free).
+    // xPortGetFreeHeapSize() is not implemented in heap_3.
+    // Use the current sbrk pointer vs the heap limit to estimate free heap.
+    // This overestimates slightly (doesn't account for freed blocks below brk),
+    // but is sufficient for heap monitoring and watchdog purposes.
+    char* brk = _sbrk(0);
+    ptrdiff_t used = brk - &__HeapBase;
+    ptrdiff_t total = &__HeapLimit - &__HeapBase;
+    if (used < 0 || used > total) return 0;
+    return (uint32_t)(total - used);
 }
 
 uint32_t minFreeHeap() {
     // nRF52/FreeRTOS doesn't have a built-in minimum-heap watermark.
     // We track it manually: every time freeHeap() is called, update the low.
-    uint32_t current = xPortGetFreeHeapSize();
+    uint32_t current = freeHeap();
     if (current < s_minFreeHeap) {
         s_minFreeHeap = current;
     }
@@ -131,9 +150,8 @@ uint32_t minFreeHeap() {
 
 uint32_t largestFreeBlock() {
     // nRF52 doesn't have heap_caps_get_largest_free_block().
-    // FreeRTOS doesn't provide a direct equivalent either.
-    // Return freeHeap() as an approximation (conservative estimate).
-    return xPortGetFreeHeapSize();
+    // Return freeHeap() as a conservative approximation.
+    return freeHeap();
 }
 
 }  // namespace platform
