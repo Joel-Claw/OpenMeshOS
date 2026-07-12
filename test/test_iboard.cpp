@@ -110,9 +110,10 @@ namespace rak4631_test {
     constexpr uint8_t OLED_SDA     = 13;
     constexpr uint8_t OLED_SCL    = 14;
 
-    // LEDs
-    constexpr uint8_t LED_BLUE    = 35;
-    constexpr uint8_t LED_GREEN   = 36;
+    // LEDs (renamed to _PIN suffix to match BoardRAK4631.h,
+    //  which avoids clash with nRF52 variant.h macros LED_BLUE/LED_GREEN)
+    constexpr uint8_t LED_BLUE_PIN  = 35;
+    constexpr uint8_t LED_GREEN_PIN = 36;
 
     // Battery ADC (nRF52 SAADC on AIN3 = P0.05)
     constexpr uint8_t BAT_ADC      = 5;
@@ -584,8 +585,8 @@ void test_rak4631_pins() {
     CHECK(rak4631_test::OLED_SCL == 14, "OLED SCL must be 14 (WB_I2C1_SCL)");
 
     // LEDs
-    CHECK(rak4631_test::LED_BLUE == 35, "LED_BLUE must be 35 (PIN_LED1)");
-    CHECK(rak4631_test::LED_GREEN == 36, "LED_GREEN must be 36 (PIN_LED2)");
+    CHECK(rak4631_test::LED_BLUE_PIN == 35, "LED_BLUE_PIN must be 35 (PIN_LED1)");
+    CHECK(rak4631_test::LED_GREEN_PIN == 36, "LED_GREEN_PIN must be 36 (PIN_LED2)");
 
     // Battery ADC
     CHECK(rak4631_test::BAT_ADC == 5, "BAT_ADC must be 5 (AIN3 / WB_A0)");
@@ -602,11 +603,36 @@ void test_rak4631_pins() {
     CHECK(rak4631_test::LORA_MISO != tdeck_test::LORA_MISO, "RAK4631 LoRa MISO must differ from T-Deck");
     CHECK(rak4631_test::LORA_MOSI != tdeck_test::LORA_MOSI, "RAK4631 LoRa MOSI must differ from T-Deck");
 
+    // LORA_POWER_EN (unique to RAK4631, not on T-Deck or Heltec V3)
+    CHECK(rak4631_test::LORA_POWER_EN == 37, "LORA_POWER_EN must be 37 (SX126X_POWER_EN)");
+
+    // WisBlock IO slot pins
+    CHECK(rak4631_test::WB_IO1 == 17, "WB_IO1 must be 17");
+    CHECK(rak4631_test::WB_IO2 == 34, "WB_IO2 must be 34");
+
+    // I2C bus 2 (IO slot)
+    CHECK(rak4631_test::I2C2_SDA == 24, "I2C2_SDA must be 24 (WB_I2C2_SDA)");
+    CHECK(rak4631_test::I2C2_SCL == 25, "I2C2_SCL must be 25 (WB_I2C2_SCL)");
+
+    // SPI bus pins (IO slot)
+    CHECK(rak4631_test::SPI_CS == 26, "SPI_CS must be 26 (WB_SPI_CS)");
+    CHECK(rak4631_test::SPI_SCK == 3, "SPI_SCK must be 3 (WB_SPI_CLK)");
+    CHECK(rak4631_test::SPI_MISO == 29, "SPI_MISO must be 29 (WB_SPI_MISO)");
+    CHECK(rak4631_test::SPI_MOSI == 30, "SPI_MOSI must be 30 (WB_SPI_MOSI)");
+
+    // GPS pins (optional external on UART1)
+    CHECK(rak4631_test::GPS_RX == 15, "GPS_RX must be 15 (PIN_SERIAL1_RX)");
+    CHECK(rak4631_test::GPS_TX == 16, "GPS_TX must be 16 (PIN_SERIAL1_TX)");
+
     // Verify RAK4631 pins also differ from Heltec V3
     CHECK(rak4631_test::LORA_CS != heltec_v3_test::LORA_CS, "RAK4631 LoRa CS must differ from Heltec V3");
     CHECK(rak4631_test::LORA_RST != heltec_v3_test::LORA_RST, "RAK4631 LoRa RST must differ from Heltec V3");
     CHECK(rak4631_test::LORA_DIO1 != heltec_v3_test::LORA_DIO1, "RAK4631 LoRa DIO1 must differ from Heltec V3");
     CHECK(rak4631_test::LORA_SCK != heltec_v3_test::LORA_SCK, "RAK4631 LoRa SCK must differ from Heltec V3");
+
+    // Verify I2C1 SDA/SCL match OLED SDA/SCL (same bus)
+    CHECK(rak4631_test::I2C1_SDA == rak4631_test::OLED_SDA, "I2C1_SDA must match OLED_SDA (same bus)");
+    CHECK(rak4631_test::I2C1_SCL == rak4631_test::OLED_SCL, "I2C1_SCL must match OLED_SCL (same bus)");
 }
 
 // ── RAK4631 BoardCaps tests ──────────────────────────────────────────
