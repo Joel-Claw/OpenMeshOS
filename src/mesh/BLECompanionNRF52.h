@@ -24,6 +24,20 @@
 //   - Characteristics are added to the last service that called .begin()
 //   - Use setWriteCallback() for event-driven write handling
 //   - notify() instead of setValue() for notifications
+//
+// BLE OTA Firmware Update (nRF52):
+//   Unlike ESP32 (where the app handles the entire OTA write via Update class),
+//   nRF52 uses the Nordic DFU bootloader. The flow is:
+//     1. Companion app sends DFU trigger to firmware update characteristic
+//     2. App saves peer bond data so bootloader can re-connect
+//     3. App sets GPREGRET magic value (0xB1)
+//     4. App disables SoftDevice and jumps to bootloader
+//     5. Bootloader advertises as DFU target, handles firmware transfer
+//     6. Bootloader verifies firmware signature (if signed)
+//     7. After DFU, bootloader reboots into new app
+//   The Adafruit BLEDfu service handles steps 2-4 automatically. We just
+//   need to expose a characteristic that triggers it, so the same companion
+//   app can initiate OTA on both ESP32 and nRF52.
 
 #pragma once
 
@@ -57,10 +71,13 @@ private:
     static void onDisconnect(uint16_t conn_handle, uint8_t reason);
     static void onConfigWrite(uint16_t conn_handle, BLECharacteristic* chr, uint8_t* data, uint16_t len);
     static void onMessageWrite(uint16_t conn_handle, BLECharacteristic* chr, uint8_t* data, uint16_t len);
+    static void onFirmwareWrite(uint16_t conn_handle, BLECharacteristic* chr, uint8_t* data, uint16_t len);
 
     void handleConfigWrite(const uint8_t* data, uint16_t len);
     void handleMessageWrite(const uint8_t* data, uint16_t len);
+    void handleFirmwareWrite(const uint8_t* data, uint16_t len);
     void buildStatusPayload(uint8_t* buf, size_t& len);
+    void notifyOtaProgress(uint8_t step, uint32_t current, uint32_t total);
 
     // BLE objects (Adafruit Bluefruit52Lib API)
     BLEService        _service;
@@ -69,10 +86,22 @@ private:
     BLECharacteristic _msgInChar;
     BLECharacteristic _msgOutChar;
     BLECharacteristic _statusChar;
+    BLECharacteristic _fwUpdateChar;
+
+    // Nordic DFU service (built into Bluefruit52Lib)
+    BLEDfu            _dfuService;
 
     bool _connected = false;
     bool _enabled   = true;
     bool _begun     = false;
+
+    // OTA state (for companion app progress reporting)
+    bool    _otaTriggered = false;
+    uint32_t _otaTriggerMs = 0;
+
+    // OTA abort timeout: if reboot into DFU doesn't happen within this,
+    // something went wrong; reset OTA state
+    static constexpr uint32_t OTA_REBOOT_TIMEOUT_MS = 5000;
 
     // Constants (must match ESP32 implementation for companion app compat)
     static constexpr const char* BLE_DEVICE_PREFIX = "OpenMesh-";
@@ -89,6 +118,7 @@ private:
     static constexpr const char* UUID_MSG_IN     = "00000003-0000-1000-8000-00805f9b34fb";
     static constexpr const char* UUID_MSG_OUT    = "00000004-0000-1000-8000-00805f9b34fb";
     static constexpr const char* UUID_STATUS     = "00000005-0000-1000-8000-00805f9b34fb";
+    static constexpr const char* UUID_FW_UPDATE  = "00000006-0000-1000-8000-00805f9b34fb";
 
     // Status update interval (ms)
     static constexpr uint32_t STATUS_UPDATE_MS = 5000;

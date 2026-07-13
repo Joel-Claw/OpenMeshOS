@@ -4,10 +4,11 @@
 // nRF52 BLE companion app service implementation.
 // Uses Adafruit Bluefruit52Lib (Nordic SoftDevice) for BLE connectivity.
 //
-// NOTE: BLE OTA firmware update is NOT implemented on nRF52 in this version.
-// The nRF52 uses a different OTA mechanism (Nordic DFU / bootloader-based).
-// OTA via BLE would require integrating with the Nordic bootloader, which
-// is a separate effort. The firmware update characteristic is omitted here.
+// BLE OTA firmware update uses the Nordic DFU bootloader via Adafruit BLEDfu.
+// The companion app sends a trigger byte (0x01) to the firmware update
+// characteristic, which starts the DFU process. BLEDfu handles saving bond
+// data, setting GPREGRET, and jumping to the bootloader. The bootloader then
+// advertises as a DFU target and the companion app transfers the new firmware.
 
 #include "BLECompanionNRF52.h"
 #include "MeshService.h"
@@ -63,6 +64,12 @@ void BLECompanionNRF52::onMessageWrite(uint16_t conn_handle, BLECharacteristic* 
     instance().handleMessageWrite(data, len);
 }
 
+void BLECompanionNRF52::onFirmwareWrite(uint16_t conn_handle, BLECharacteristic* chr, uint8_t* data, uint16_t len) {
+    (void)conn_handle;
+    (void)chr;
+    instance().handleFirmwareWrite(data, len);
+}
+
 // ── init ───────────────────────────────────────────────────────────
 void BLECompanionNRF52::init() {
     OMS_LOG("BLE", "Initialising BLE companion service (nRF52 Bluefruit52Lib)");
@@ -81,6 +88,9 @@ void BLECompanionNRF52::init() {
 
     Bluefruit.configUuid128Count(16);  // Ensure 128-bit UUID support
     Bluefruit.setName(_deviceName);
+
+    // Start the Nordic DFU service (built into Bluefruit52Lib)
+    _dfuService.begin();
 
     // Configure and start the companion service
     // Order matters: service.begin() must be called before characteristic.begin()
@@ -126,6 +136,14 @@ void BLECompanionNRF52::init() {
     _msgOutChar.setWriteCallback(onMessageWrite, false);
     _msgOutChar.begin();
 
+    // ── Firmware Update characteristic (triggers Nordic DFU) ─────
+    _fwUpdateChar.setUuid(UUID_FW_UPDATE);
+    _fwUpdateChar.setProperties(CHR_PROPS_WRITE | CHR_PROPS_NOTIFY);
+    _fwUpdateChar.setPermission(SECMODE_OPEN, SECMODE_OPEN);
+    _fwUpdateChar.setMaxLen(1);
+    _fwUpdateChar.setWriteCallback(onFirmwareWrite, false);
+    _fwUpdateChar.begin();
+
     // ── Device Status characteristic ──────────────────────────────
     _statusChar.setUuid(UUID_STATUS);
     _statusChar.setProperties(CHR_PROPS_READ | CHR_PROPS_NOTIFY);
@@ -164,6 +182,16 @@ void BLECompanionNRF52::tick() {
         if (now - _lastStatusMs >= STATUS_UPDATE_MS) {
             notifyStatus();
             _lastStatusMs = now;
+        }
+    }
+
+    // OTA timeout: if DFU trigger was sent but reboot hasn't happened yet,
+    // reset OTA state after the timeout period
+    if (_otaTriggered) {
+        uint32_t now = millis();
+        if (now - _otaTriggerMs >= OTA_REBOOT_TIMEOUT_MS) {
+            OMS_LOG("BLE", "OTA: DFU reboot timeout, resetting OTA state");
+            _otaTriggered = false;
         }
     }
 }
@@ -356,6 +384,71 @@ void BLECompanionNRF52::handleMessageWrite(const uint8_t* data, uint16_t len) {
         MeshService::instance().sendChannel(channelName, textBuf);
     }
     OMS_LOG("BLE", "Message sent to channel %d: %s", channelId, textBuf);
+}
+
+// ── handleFirmwareWrite ───────────────────────────────────────────
+void BLECompanionNRF52::handleFirmwareWrite(const uint8_t* data, uint16_t len) {
+    if (len < 1 || !data) return;
+
+    uint8_t cmd = data[0];
+    OMS_LOG("BLE", "OTA: firmware write cmd=0x%02X", cmd);
+
+    switch (cmd) {
+        case 0x01:  // Trigger DFU mode
+            OMS_LOG("BLE", "OTA: Triggering Nordic DFU bootloader mode");
+
+            // Notify companion app that DFU is starting
+            notifyOtaProgress(1, 0, 0);
+
+            _otaTriggered = true;
+            _otaTriggerMs = millis();
+
+            // Small delay so the notify can be sent before we reboot
+            delay(100);
+
+            // BLEDfu.start() saves peer bond data, sets GPREGRET=0xB1,
+            // disables SoftDevice, and jumps to the bootloader.
+            // The bootloader will advertise as "OpenMesh-DFU" and the
+            // companion app connects to transfer firmware.
+            _dfuService.start();
+            break;
+
+        case 0x02:  // Cancel/abort (no-op if already in DFU)
+            OMS_LOG("BLE", "OTA: Cancel requested (no-op in trigger mode)");
+            _otaTriggered = false;
+            break;
+
+        case 0x03:  // Query OTA state
+            notifyOtaProgress(_otaTriggered ? 2 : 0, 0, 0);
+            break;
+
+        default:
+            OMS_LOG("BLE", "OTA: Unknown command 0x%02X, ignored", cmd);
+            break;
+    }
+}
+
+// ── notifyOtaProgress ─────────────────────────────────────────────
+void BLECompanionNRF52::notifyOtaProgress(uint8_t step, uint32_t current, uint32_t total) {
+    if (!_connected || _connHandle == BLE_CONN_HANDLE_INVALID) return;
+    if (!_fwUpdateChar.notifyEnabled(_connHandle)) return;
+
+    // Notify payload: [1B step] [4B current] [4B total]
+    uint8_t buf[9];
+    size_t len = 0;
+
+    buf[len++] = step;
+    buf[len++] = current & 0xFF;
+    buf[len++] = (current >> 8) & 0xFF;
+    buf[len++] = (current >> 16) & 0xFF;
+    buf[len++] = (current >> 24) & 0xFF;
+    buf[len++] = total & 0xFF;
+    buf[len++] = (total >> 8) & 0xFF;
+    buf[len++] = (total >> 16) & 0xFF;
+    buf[len++] = (total >> 24) & 0xFF;
+
+    _fwUpdateChar.notify(_connHandle, buf, len);
+    OMS_LOG("BLE", "OTA progress: step=%u current=%u total=%u", step, current, total);
 }
 
 // ── setEnabled ────────────────────────────────────────────────────
