@@ -141,7 +141,7 @@ Goal: Support other ESP32-S3 LoRa devices.
   - [x] Update main.cpp and UI screens to use IBLECompanion via theBLECompanion()
   - [x] Platform-agnostic buildStatusPayload using platform::freeHeap()
   - [ ] Test BLE on RAK4631 hardware (nRF52 SoftDevice pairing, message flow)
-  - [ ] Implement BLE OTA firmware update on nRF52 (Nordic DFU bootloader integration)
+  - [x] Implement BLE OTA firmware update on nRF52 (Nordic DFU bootloader integration) — July 13, 2026
 - [ ] PlatformIO environments for:
   - [x] `t-deck` (current)
   - [x] `t-deck-plus` (GPS variant)
