@@ -18,7 +18,7 @@ src/
   mesh/MeshBoard.h/cpp — Platform-agnostic MainBoard impl (delegates to IBoard)
   mesh/MeshClock.h/cpp — Platform-agnostic RTCClock impl (GPS/NTP/BLE sync)
   mesh/NodeTracker.h/cpp — Discovered node tracking (fixed-size array)
-  mesh/OpenMesh.h/cpp — MeshCore subclass (callback overrides)
+  mesh/OpenMeshChat.h/cpp — MeshCore BaseChatMesh subclass (chat, contacts, channels)
   mesh/IBLECompanion.h — BLE companion interface (platform-agnostic)
   mesh/BLECompanion.h/cpp — ESP32 BLE companion impl (ESP32 BLE stack)
   mesh/BLECompanionNRF52.h/cpp — nRF52 BLE companion impl (Adafruit Bluefruit52Lib)
