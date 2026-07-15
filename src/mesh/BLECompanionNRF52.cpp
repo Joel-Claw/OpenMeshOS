@@ -406,11 +406,15 @@ void BLECompanionNRF52::handleFirmwareWrite(const uint8_t* data, uint16_t len) {
             // Small delay so the notify can be sent before we reboot
             delay(100);
 
-            // BLEDfu.start() saves peer bond data, sets GPREGRET=0xB1,
-            // disables SoftDevice, and jumps to the bootloader.
-            // The bootloader will advertise as "OpenMesh-DFU" and the
-            // companion app connects to transfer firmware.
-            _dfuService.start();
+            // The companion app should write 0x01 to the DFU control
+            // characteristic (UUID 0x1531) directly. The BLEDfu service
+            // handles saving peer bond data, setting GPREGRET=0xB1,
+            // disabling SoftDevice, and jumping to the bootloader.
+            // We cannot trigger it from the application side because
+            // BLEDfu uses a write-authorize callback, not a public API.
+            // The companion app uses Nordic DFU protocol on the DFU
+            // service (UUID 0x1530) to perform the full firmware transfer.
+            OMS_LOG("BLE", "OTA: Companion should use DFU service (UUID 0x1530)");
             break;
 
         case 0x02:  // Cancel/abort (no-op if already in DFU)
