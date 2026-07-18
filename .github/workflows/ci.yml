@@ -24,18 +24,23 @@ jobs:
             continue-on-error: false
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: recursive
 
+      - name: Get submodule hash
+        id: submod
+        run: echo "hash=$(git submodule status lib/MeshCore | awk '{print $1}')" >> $GITHUB_OUTPUT
+
       - name: Cache PlatformIO
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.platformio
             .pio
-          key: pio-${{ runner.os }}-${{ hashFiles('platformio.ini') }}
+          key: pio-${{ runner.os }}-${{ hashFiles('platformio.ini') }}-${{ steps.submod.outputs.hash }}
           restore-keys: |
+            pio-${{ runner.os }}-${{ hashFiles('platformio.ini') }}-
             pio-${{ runner.os }}-
 
       - name: Set up Python
@@ -110,7 +115,7 @@ jobs:
           echo "Merged binary size: $(wc -c < "$BUILD/openmeshos-merged.bin") bytes"
 
       - name: Upload firmware artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: firmware-${{ matrix.environment }}
           path: |
@@ -121,7 +126,7 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Check for TODOs in code
         run: |
@@ -163,7 +168,7 @@ jobs:
   python-tests:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -183,7 +188,7 @@ jobs:
   host-tests:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install g++ (C++14)
         run: |

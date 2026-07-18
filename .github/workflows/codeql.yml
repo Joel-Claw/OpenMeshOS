@@ -15,18 +15,23 @@ jobs:
       actions: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: true
 
+      - name: Get submodule hash
+        id: submod
+        run: echo "hash=$(git submodule status lib/MeshCore | awk '{print $1}')" >> $GITHUB_OUTPUT
+
       - name: Cache PlatformIO
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.platformio
             .pio
-          key: pio-${{ runner.os }}-${{ hashFiles('platformio.ini') }}
+          key: pio-${{ runner.os }}-${{ hashFiles('platformio.ini') }}-${{ steps.submod.outputs.hash }}
           restore-keys: |
+            pio-${{ runner.os }}-${{ hashFiles('platformio.ini') }}-
             pio-${{ runner.os }}-
 
       - name: Install PlatformIO
