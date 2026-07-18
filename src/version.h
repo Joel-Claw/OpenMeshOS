@@ -1,3 +1,5 @@
+// OpenMeshOS — version.h
+// Copyright 2026 Joel Claw & contributors — WTFPL v2
 #pragma once
 // OpenMeshOS version — update before each release
 #define OMS_VERSION_MAJOR 0
