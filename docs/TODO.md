@@ -38,7 +38,7 @@
 ## Research Sources
 
 - [x] Review Aurora firmware trackball implementation
-- [ ] Review LilyGo official T-Deck examples
+- [x] Review LilyGo official T-Deck examples — utilities.h pin definitions match our tdeck:: namespace exactly (validated July 16, 2026)
 - [x] Review community firmware projects (MeshCore #1469, #1424, Meshtastic #9440)
 - [x] Cross-reference: Meshtastic trackball revamp, LilyGo T-Deck #71
 

@@ -30,9 +30,8 @@ jobs:
             ~/.platformio
             .pio
           key: pio-${{ runner.os }}-${{ hashFiles('platformio.ini') }}-${{ steps.submod.outputs.hash }}
-          restore-keys: |
-            pio-${{ runner.os }}-${{ hashFiles('platformio.ini') }}-
-            pio-${{ runner.os }}-
+          # No restore-keys: falling back to a cache without the submodule hash
+          # restores stale .o files after a submodule bump, causing build failures.
 
       - name: Install PlatformIO
         run: pip install platformio
