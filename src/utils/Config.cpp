@@ -182,14 +182,23 @@ const Config& config::get() { return s_cfg; }
 static size_t findJsonString(const char* json, size_t jsonLen,
                               const char* key, char* dest, size_t maxLen)
 {
-    // Build search pattern: "key":"
+    // Build search pattern: "key":
+    // We search for "key": (without the opening quote) to handle both
+    // compact JSON ("key":"value") and spaced JSON ("key": "value").
     char pattern[48];
-    int plen = snprintf(pattern, sizeof(pattern), "\"%s\":\"", key);
-    if (plen <= 0 || (size_t)plen >= sizeof(pattern)) return 0;
+    int plen = snprintf(pattern, sizeof(pattern), "\"%s\":", key);
+    if (plen <= 0 || (size_t)plen >= sizeof(pattern)) { if (maxLen > 0) dest[0] = '\0'; return 0; }
 
     const char* pos = std::strstr(json, pattern);
-    if (!pos) return 0;
-    pos += plen;  // skip past opening quote
+    if (!pos) { if (maxLen > 0) dest[0] = '\0'; return 0; }
+    pos += plen;  // skip past the colon
+
+    // Skip whitespace between colon and opening quote (valid JSON)
+    while (*pos == ' ' || *pos == '\t' || *pos == '\n' || *pos == '\r') pos++;
+
+    // Expect opening quote
+    if (*pos != '"') { if (maxLen > 0) dest[0] = '\0'; return 0; }
+    pos++;  // skip past opening quote
 
     // Extract value with escape handling
     size_t outLen = 0;
